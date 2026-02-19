@@ -5,6 +5,9 @@ import os
 # Add the directory containing this script to sys.path so handlers can import utils
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Add WindPy location to sys.path
+sys.path.insert(0, r"C:\Wind\Wind.NET.Client\WindNET\bin")
+
 from handlers.wsd import handle_wsd
 from handlers.wss import handle_wss
 from handlers.wsq import handle_wsq
