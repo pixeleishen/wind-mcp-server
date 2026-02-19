@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp -r src/python dist/python",
+    "build": "tsc && xcopy /E /I /Y src\\python dist\\python",
     "start": "node dist/index.js",
     "dev": "tsc --watch"
   },
