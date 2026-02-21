@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(\"/c/Program Files/Docker/Docker/resources/bin/docker\" --version)",
+      "Bash(cmd.exe //c \"docker --version\")",
+      "Bash(npx tsc:*)",
+      "Bash(for f in ui/src/components/*.tsx ui/src/components/*.css)",
+      "Bash(do cp \"$f\" src/ui/components/)",
+      "Bash(done)",
+      "Bash(for f in ui/src/pages/*.tsx ui/src/pages/*.css)",
+      "Bash(do cp \"$f\" src/ui/pages/)",
+      "Bash(npm install:*)",
+      "Bash(npx vite build:*)",
+      "Bash(npm run build:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(where:*)",
+      "Bash(winget install:*)",
+      "Bash(winget search:*)",
+      "Bash(curl:*)",
+      "Bash(unzip:*)",
+      "Bash(\"C:/Users/Pixel/pgsql/bin/initdb.exe\" -D \"C:/Users/Pixel/pgsql/data\" -U postgres -E UTF8 --locale=C)",
+      "Bash(\"C:/Users/Pixel/pgsql/bin/pg_ctl.exe\" -D \"C:/Users/Pixel/pgsql/data\" -l \"C:/Users/Pixel/pgsql/logfile\" start)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && npm ls multer 2>&1)",
+      "mcp__ide__getDiagnostics",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && node -e \"\nconst { spawn } = require\\('child_process'\\);\nconst proc = spawn\\('python', ['dist/python/wind_bridge.py', JSON.stringify\\({function:'tdays',params:{beginTime:'2025-01-01',endTime:'2025-01-31'}}\\)]\\);\nlet out='', err='';\nproc.stdout.on\\('data', c => out += c\\);\nproc.stderr.on\\('data', c => err += c\\);\nproc.on\\('close', code => { console.log\\('code:', code\\); console.log\\('stdout:', out\\); console.log\\('stderr:', err\\); }\\);\n\" 2>&1)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && npm run build:server 2>&1)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && node -e \"\nconst multer = require\\('multer'\\);\nconsole.log\\(typeof multer\\);\nconsole.log\\(Object.keys\\(multer\\)\\);\nconst m = multer\\({ dest: '/tmp/test' }\\);\nconsole.log\\(typeof m.single\\);\n\" 2>&1)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && node -e \"\nconst fs = require\\('fs'\\);\nconst path = require\\('path'\\);\n\nasync function test\\(\\) {\n  const form = new FormData\\(\\);\n  const payload = JSON.stringify\\({function:'wsd', params:{fields:'close,volume'}}\\);\n  form.append\\('payload', payload\\);\n  \n  const fileBuffer = fs.readFileSync\\('testdata/sample_codes.xlsx'\\);\n  const blob = new Blob\\([fileBuffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}\\);\n  form.append\\('excelFile', blob, 'sample_codes.xlsx'\\);\n  \n  const res = await fetch\\('http://localhost:3001/api/query', {method:'POST', body: form}\\);\n  const data = await res.json\\(\\);\n  console.log\\(JSON.stringify\\(data, null, 2\\)\\);\n}\ntest\\(\\).catch\\(e => console.error\\(e\\)\\);\n\" 2>&1)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && node -e \"\nconst multer = require\\('multer'\\);\nconst express = require\\('express'\\);\nconst app = express\\(\\);\nconst upload = multer\\({ dest: require\\('os'\\).tmpdir\\(\\) + '/wind-test' }\\);\n\napp.post\\('/test', upload.single\\('file'\\), \\(req, res\\) => {\n  console.log\\('file keys:', req.file ? Object.keys\\(req.file\\) : 'no file'\\);\n  console.log\\('file:', JSON.stringify\\(req.file, null, 2\\)\\);\n  res.json\\({ok: true}\\);\n  server.close\\(\\);\n}\\);\n\nconst server = app.listen\\(9999, async \\(\\) => {\n  const fs = require\\('fs'\\);\n  const form = new FormData\\(\\);\n  form.append\\('payload', 'test'\\);\n  const buf = fs.readFileSync\\('testdata/sample_codes.xlsx'\\);\n  form.append\\('file', new Blob\\([buf]\\), 'test.xlsx'\\);\n  await fetch\\('http://localhost:9999/test', {method:'POST', body: form}\\);\n}\\);\n\" 2>&1)",
+      "WebSearch",
+      "WebFetch(domain:www.modb.pro)",
+      "WebFetch(domain:xueqiu.com)",
+      "Bash(cd:*)"
+    ]
+  }
+}

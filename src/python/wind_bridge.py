@@ -14,6 +14,12 @@ from handlers.wsq import handle_wsq
 from handlers.wset import handle_wset
 from handlers.edb import handle_edb
 from handlers.tdays import handle_tdays
+from handlers.wst import handle_wst
+from handlers.wses import handle_wses
+from handlers.wsee import handle_wsee
+from handlers.tdaysoffset import handle_tdaysoffset
+from handlers.tdayscount import handle_tdayscount
+from excel_reader import read_excel
 
 HANDLERS = {
     "wsd": handle_wsd,
@@ -22,7 +28,22 @@ HANDLERS = {
     "wset": handle_wset,
     "edb": handle_edb,
     "tdays": handle_tdays,
+    "wst": handle_wst,
+    "wses": handle_wses,
+    "wsee": handle_wsee,
+    "tdaysoffset": handle_tdaysoffset,
+    "tdayscount": handle_tdayscount,
 }
+
+
+def handle_ping():
+    try:
+        from WindPy import w
+        result = w.start(waitTime=5)
+        connected = result.ErrorCode == 0
+        print(json.dumps({"ok": True, "connected": connected, "error_code": result.ErrorCode}))
+    except Exception as e:
+        print(json.dumps({"ok": True, "connected": False, "error": str(e)}))
 
 
 def main():
@@ -38,6 +59,19 @@ def main():
 
     func = request.get("function")
     params = request.get("params", {})
+
+    # If excelPath is provided, read codes/time range from Excel and merge into params
+    excel_path = params.pop("excelPath", None)
+    if excel_path:
+        excel_data = read_excel(excel_path)
+        # Excel values are defaults; explicit params take priority
+        for key, val in excel_data.items():
+            if key not in params or not params[key]:
+                params[key] = val
+
+    if func == "ping":
+        handle_ping()
+        return
 
     if func not in HANDLERS:
         print(json.dumps({"ok": False, "error": f"Unknown function: {func}"}))

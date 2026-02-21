@@ -1,0 +1,27 @@
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.checking .dot  { background: #a0aec0; }
+.connected .dot { background: #48bb78; box-shadow: 0 0 6px #48bb78; }
+.disconnected .dot { background: #fc8181; }
+.server_down .dot  { background: #f6ad55; }
+
+.checking     { color: #a0aec0; }
+.connected    { color: #9ae6b4; }
+.disconnected { color: #fc8181; }
+.server_down  { color: #f6ad55; }

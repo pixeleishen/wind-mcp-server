@@ -41,8 +41,29 @@ ERROR_CODES = {
     -40521009: "Invalid security code",
     -40522003: "Invalid field",
     -40522009: "Date out of range",
+    -40522018: "Multi-codes with multi-fields not supported (use single code or single field)",
 }
 
 
 def handle_error(error_code: int) -> str:
     return ERROR_CODES.get(error_code, f"Wind error code: {error_code}")
+
+
+def merge_wind_results(results: list[dict]) -> dict:
+    """Merge multiple single-code wind_data_to_dict results into one."""
+    if not results:
+        return {}
+
+    merged = {
+        "error_code": 0,
+        "codes": [],
+        "fields": results[0]["fields"],
+        "times": results[0]["times"],
+        "data": [],
+    }
+
+    for r in results:
+        merged["codes"].extend(r["codes"])
+        merged["data"].extend(r["data"])
+
+    return merged

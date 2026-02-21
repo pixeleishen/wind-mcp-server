@@ -2,6 +2,45 @@
 
 A TypeScript MCP (Model Context Protocol) server that exposes Wind Information (万得) financial terminal data to LLMs. Wind has no native HTTP API — it uses a local desktop terminal with a Python SDK (WindPy). This server bridges MCP tool calls to Python subprocess calls that invoke WindPy and return JSON.
 
+## How It Works
+
+Wind has no HTTP API — data is only accessible through the Wind desktop terminal via WindPy. This server makes that data available to LLMs by acting as a translator:
+
+```
+You (chat)
+    │
+    ▼
+LLM (e.g. Claude)
+    │  decides to call a tool, e.g. wind_wsd
+    ▼
+MCP Server  (this project, node dist/index.js)
+    │  spawns subprocess
+    ▼
+Python Bridge  (dist/python/wind_bridge.py)
+    │  calls WindPy
+    ▼
+Wind Terminal  (must be running and logged in)
+    │  returns data
+    ▼
+JSON response flows back up to the LLM
+    │
+    ▼
+LLM answers your question using the real financial data
+```
+
+### End-to-end example
+
+1. You ask Claude: *"What were the closing prices of 000001.SZ last week?"*
+2. Claude recognises it needs historical price data and calls the `wind_wsd` tool with the appropriate parameters.
+3. The MCP server receives the tool call and spawns `wind_bridge.py` as a subprocess.
+4. `wind_bridge.py` calls `w.wsd("000001.SZ", "close", "2024-01-08", "2024-01-12")` via WindPy.
+5. WindPy queries the locally running Wind terminal and returns the data.
+6. The bridge serialises it to JSON and prints it to stdout.
+7. The MCP server captures the output and returns it to Claude as the tool result.
+8. Claude reads the data and answers your question in plain English.
+
+The MCP server itself does not need to be restarted between queries — it stays running and handles tool calls on demand.
+
 ## Prerequisites
 
 - **Wind Terminal** installed and logged in on the local machine
@@ -63,6 +102,14 @@ To use with an MCP client (e.g. Claude Desktop), add this to your MCP client con
 
 **Test the Python bridge directly** (requires Wind terminal running):
 
+> **Windows note:** Do not use single quotes for the JSON argument — PowerShell passes them literally and Python will reject the input. Always use double quotes with escaping.
+
+PowerShell / cmd:
+```powershell
+python dist/python/wind_bridge.py "{\"function\":\"tdays\",\"params\":{\"beginTime\":\"2024-01-01\",\"endTime\":\"2024-01-10\"}}"
+```
+
+Git Bash / WSL:
 ```bash
 python dist/python/wind_bridge.py '{"function":"tdays","params":{"beginTime":"2024-01-01","endTime":"2024-01-10"}}'
 ```
@@ -113,8 +160,8 @@ Your Wind account subscription does not include the requested data field or secu
 ### `Invalid security code` (ErrorCode: -40521009)
 The security code format is incorrect. Wind codes follow the pattern `000001.SZ` (Shenzhen) or `600000.SH` (Shanghai). Verify the code in the Wind terminal.
 
-### Build fails: `cp: command not found`
-On Windows without Unix tools on PATH, the `cp` command in the build script may fail. Use Git Bash or WSL to run `npm run build`, or manually copy `src/python/` to `dist/python/` after `tsc`.
+### `Invalid JSON` when testing the bridge
+PowerShell does not support single-quoted JSON arguments — the quotes are passed literally to Python. Use double quotes with escaping as shown in the Testing section above.
 
 ## Project Structure
 

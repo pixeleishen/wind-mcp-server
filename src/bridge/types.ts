@@ -1,5 +1,5 @@
 export interface BridgeRequest {
-  function: "wsd" | "wss" | "wsq" | "wset" | "edb" | "tdays";
+  function: "wsd" | "wss" | "wsq" | "wset" | "edb" | "tdays" | "wst" | "wses" | "wsee" | "tdaysoffset" | "tdayscount";
   params: Record<string, unknown>;
 }
 

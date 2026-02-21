@@ -4,16 +4,33 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && xcopy /E /I /Y src\\python dist\\python",
+    "build": "tsc -p tsconfig.json && xcopy /E /I /Y src\\python dist\\python && vite build",
+    "build:server": "tsc -p tsconfig.json && xcopy /E /I /Y src\\python dist\\python",
+    "build:ui": "vite build",
     "start": "node dist/index.js",
-    "dev": "tsc --watch"
+    "server": "node dist/server.js",
+    "dev": "tsc --watch",
+    "dev:ui": "vite",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/multer": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.0",
+    "multer": "^2.0.2",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.0",
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "typescript": "^5.3.0",
-    "@types/node": "^20.0.0"
+    "vite": "^5.4.0"
   }
 }

@@ -2,12 +2,12 @@ from utils import wind_data_to_dict, handle_error
 from WindPy import w
 
 
-def handle_wsq(params: dict) -> dict:
+def handle_wsee(params: dict) -> dict:
     codes = params["codes"]
     fields = params["fields"]
     options = params.get("options", "")
 
-    data = w.wsq(codes, fields, options)
+    data = w.wsee(codes, fields, options)
 
     if data.ErrorCode != 0:
         raise RuntimeError(handle_error(data.ErrorCode))

@@ -22,7 +22,9 @@ export function runBridge<T = unknown>(request: BridgeRequest): Promise<BridgeRe
         return reject(new Error(`Python bridge exited with code ${code}: ${stderr.trim()}`));
       }
       try {
-        resolve(JSON.parse(stdout) as BridgeResponse<T>);
+        const jsonStart = stdout.indexOf("{");
+        const jsonStr = jsonStart >= 0 ? stdout.slice(jsonStart) : stdout;
+        resolve(JSON.parse(jsonStr) as BridgeResponse<T>);
       } catch {
         reject(new Error(`Failed to parse bridge output: ${stdout}`));
       }
