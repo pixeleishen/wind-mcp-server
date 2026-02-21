@@ -1,80 +1,92 @@
 # wind-mcp-server
 
-A TypeScript MCP (Model Context Protocol) server that exposes Wind Information (万得) financial terminal data to LLMs. Wind has no native HTTP API — it uses a local desktop terminal with a Python SDK (WindPy). This server bridges MCP tool calls to Python subprocess calls that invoke WindPy and return JSON.
+Wind 金融终端 MCP Server + Web 数据查询平台。通过 Python Bridge 将 Wind 终端数据暴露给 LLM（MCP 协议）和 Web UI。
 
-## How It Works
-
-Wind has no HTTP API — data is only accessible through the Wind desktop terminal via WindPy. This server makes that data available to LLMs by acting as a translator:
+## 架构
 
 ```
-You (chat)
-    │
-    ▼
-LLM (e.g. Claude)
-    │  decides to call a tool, e.g. wind_wsd
-    ▼
-MCP Server  (this project, node dist/index.js)
-    │  spawns subprocess
-    ▼
-Python Bridge  (dist/python/wind_bridge.py)
-    │  calls WindPy
-    ▼
-Wind Terminal  (must be running and logged in)
-    │  returns data
-    ▼
-JSON response flows back up to the LLM
-    │
-    ▼
-LLM answers your question using the real financial data
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐     ┌───────────────┐
+│  React UI   │────▶│ Express API  │────▶│ Python Bridge │────▶│ Wind Terminal │
+│  :5173      │     │ :3001        │     │ wind_bridge.py│     │ (WindPy)      │
+└─────────────┘     └──────────────┘     └───────────────┘     └───────────────┘
+                           │
+┌─────────────┐            │
+│  LLM Client │────────────┘  (MCP stdio transport via index.js)
+│  (Claude等) │
+└─────────────┘
 ```
 
-### End-to-end example
+## 支持的 Wind API 函数
 
-1. You ask Claude: *"What were the closing prices of 000001.SZ last week?"*
-2. Claude recognises it needs historical price data and calls the `wind_wsd` tool with the appropriate parameters.
-3. The MCP server receives the tool call and spawns `wind_bridge.py` as a subprocess.
-4. `wind_bridge.py` calls `w.wsd("000001.SZ", "close", "2024-01-08", "2024-01-12")` via WindPy.
-5. WindPy queries the locally running Wind terminal and returns the data.
-6. The bridge serialises it to JSON and prints it to stdout.
-7. The MCP server captures the output and returns it to Claude as the tool result.
-8. Claude reads the data and answers your question in plain English.
+| 函数 | 说明 | 多codes | 多fields | 备注 |
+|------|------|---------|----------|------|
+| WSD | 日期序列数据 | ✓ | ✓ | 多codes+多fields时自动逐个查询 |
+| WSS | 日截面数据 | ✓ | ✓ | 单时间点，支持多品种多指标 |
+| WSQ | 实时行情快照 | ✓ | ✓ | |
+| WST | 日内Tick数据 | ✗ 单品种 | ✓ | 近7个交易日 |
+| WSET | 数据集报表 | — | — | 板块成分/指数成分等 |
+| WSES | 板块日序列 | ✓ | ✗ 单指标 | |
+| WSEE | 板块日截面 | ✓ | ✓ | |
+| EDB | 宏观经济数据库 | ✓ | — | codes即指标代码 |
+| TDAYS | 交易日历 | — | — | |
+| TDAYSOFFSET | 日期偏移 | — | — | |
+| TDAYSCOUNT | 交易日计数 | — | — | |
 
-The MCP server itself does not need to be restarted between queries — it stays running and handles tool calls on demand.
+## 前置条件
 
-## Prerequisites
+- Wind 终端已安装并登录
+- Python 3.7+（WindPy 可访问）
+- Node.js 18+
 
-- **Wind Terminal** installed and logged in on the local machine
-- **WindPy** Python package (installed with the Wind terminal, typically at `C:\Wind\Wind.NET.Client\WindNetClient\bin\WindPy`)
-- **Python 3.7+** with WindPy accessible on `PATH`
-- **Node.js 18+**
-
-## Installation
+## 安装
 
 ```bash
 npm install
+pip install openpyxl
 npm run build
 ```
 
-The build step compiles TypeScript to `dist/` and copies the Python bridge files to `dist/python/`.
-
-## Wind Authentication
-
-Wind does **not** use API keys. Authentication is handled entirely by the Wind desktop terminal:
-
-1. Open and log in to the Wind terminal application before starting this server.
-2. WindPy connects to the already-running terminal session on startup via `w.start()`.
-3. If the terminal is not running or not logged in, all tool calls will fail with a connection error.
-
-There are no environment variables or config files to set for credentials.
-
-## Running
+## 运行
 
 ```bash
-# Start the MCP server (stdio transport)
+# 启动后端 API 服务
+npm run server
+
+# 启动前端开发服务
+npm run dev:ui
+
+# 启动 MCP Server（stdio，供 LLM 客户端使用）
 npm start
 ```
 
-To use with an MCP client (e.g. Claude Desktop), add this to your MCP client config:
+## 功能特性
+
+### Web UI 数据查询
+- 11 个 Wind API 函数的可视化查询表单
+- 每个函数带中文说明和推荐参数提示
+- Tab 键快速填充 placeholder 内容
+- 前端校验多维查询限制（WST 单品种、WSES 单指标）
+
+### Excel 批量导入
+- 支持从 Excel 文件导入证券代码和时间范围
+- 自动识别中英文表头（code/股票代码/Wind代码、开始日期/结束日期）
+- 上传 Excel 后 codes/beginTime/endTime 字段自动变为可选
+
+### 数据入库（ETL）
+- 交易日历、日度行情、基本面指标、宏观数据入库
+- 支持增量更新
+- SSE 实时日志流
+
+### LLM 数据清洗
+- 聊天式交互界面
+- 支持 OpenAI / Anthropic / DeepSeek / Gemini / Ollama
+- 自动读取数据库 schema 作为上下文
+
+### LLM 设置
+- 多 Provider 支持，服务端密钥 + 客户端密钥双模式
+- 连接测试
+
+## MCP 客户端配置
 
 ```json
 {
@@ -87,106 +99,63 @@ To use with an MCP client (e.g. Claude Desktop), add this to your MCP client con
 }
 ```
 
-## Available Tools
-
-| Tool | Wind Function | Description |
-|------|--------------|-------------|
-| `wind_wsd` | `w.wsd()` | Historical time-series data (OHLCV, fundamentals) |
-| `wind_wss` | `w.wss()` | Snapshot / point-in-time values (latest price, PE ratio) |
-| `wind_wsq` | `w.wsq()` | Real-time quote snapshot |
-| `wind_wset` | `w.wset()` | Dataset queries (index constituents, sector members) |
-| `wind_edb` | `w.edb()` | Economic Database macro indicators |
-| `wind_tdays` | `w.tdays()` | Trading calendar days |
-
-## Testing
-
-**Test the Python bridge directly** (requires Wind terminal running):
-
-> **Windows note:** Do not use single quotes for the JSON argument — PowerShell passes them literally and Python will reject the input. Always use double quotes with escaping.
-
-PowerShell / cmd:
-```powershell
-python dist/python/wind_bridge.py "{\"function\":\"tdays\",\"params\":{\"beginTime\":\"2024-01-01\",\"endTime\":\"2024-01-10\"}}"
-```
-
-Git Bash / WSL:
-```bash
-python dist/python/wind_bridge.py '{"function":"tdays","params":{"beginTime":"2024-01-01","endTime":"2024-01-10"}}'
-```
-
-Expected output:
-```json
-{"ok": true, "data": {"error_code": 0, "codes": [], "fields": ["DATETIME"], "times": [], "data": [["2024-01-02", ...]]}}
-```
-
-**Test with MCP inspector** (schema validation only, no Wind terminal needed):
-
-```bash
-npx @modelcontextprotocol/inspector node dist/index.js
-```
-
-Open the inspector UI and confirm all 6 tools appear in the tool list.
-
-## Troubleshooting
-
-### `Wind start failed` / `ErrorCode: -2`
-The Wind terminal is not running or not logged in. Start the terminal and log in before running the server.
-
-### `ModuleNotFoundError: No module named 'WindPy'`
-WindPy is not on Python's path. Add the Wind installation directory to `PYTHONPATH`:
-
-```bash
-# Windows (PowerShell)
-$env:PYTHONPATH = "C:\Wind\Wind.NET.Client\WindNetClient\bin"
-```
-
-Or set it permanently in System Environment Variables.
-
-### `python: command not found` / `python` runs Python 2
-The server calls `python` (not `python3`). Ensure `python` on your `PATH` resolves to Python 3.7+:
-
-```bash
-python --version
-```
-
-If needed, edit `src/bridge/runner.ts` line 10 to use `python3` or the full path to your Python executable, then rebuild.
-
-### `Failed to parse bridge output`
-The Python bridge printed something unexpected to stdout (e.g. Wind startup banner). Check stderr output. Wind sometimes prints startup messages — these are captured separately and should not interfere, but if they appear on stdout they will break JSON parsing.
-
-### `No permission for this data` (ErrorCode: -40520007)
-Your Wind account subscription does not include the requested data field or security. Check your Wind terminal data permissions.
-
-### `Invalid security code` (ErrorCode: -40521009)
-The security code format is incorrect. Wind codes follow the pattern `000001.SZ` (Shenzhen) or `600000.SH` (Shanghai). Verify the code in the Wind terminal.
-
-### `Invalid JSON` when testing the bridge
-PowerShell does not support single-quoted JSON arguments — the quotes are passed literally to Python. Use double quotes with escaping as shown in the Testing section above.
-
-## Project Structure
+## 项目结构
 
 ```
 src/
-├── index.ts              # MCP server entry, tool registration, stdio transport
+├── index.ts                 MCP Server 入口（stdio transport）
+├── server.ts                Express API 服务（HTTP :3001）
 ├── bridge/
-│   ├── runner.ts         # Spawns Python subprocess, parses JSON stdout
-│   └── types.ts          # BridgeRequest / BridgeResponse interfaces
-├── tools/
-│   ├── index.ts          # Re-exports all tools
-│   ├── wsd.ts            # Historical time-series
-│   ├── wss.ts            # Snapshot values
-│   ├── wsq.ts            # Real-time quotes
-│   ├── wset.ts           # Dataset queries
-│   ├── edb.ts            # Economic database
-│   └── tdays.ts          # Trading calendar
-└── python/
-    ├── wind_bridge.py    # CLI dispatcher: reads JSON arg, routes to handler
-    ├── utils.py          # WindData serialization, error code mapping
-    └── handlers/
-        ├── wsd.py
-        ├── wss.py
-        ├── wsq.py
-        ├── wset.py
-        ├── edb.py
-        └── tdays.py
+│   ├── runner.ts            Python 子进程调用
+│   └── types.ts             请求/响应类型定义
+├── python/
+│   ├── wind_bridge.py       CLI 分发器：解析 JSON → 路由到 handler
+│   ├── excel_reader.py      Excel 文件读取（openpyxl）
+│   ├── utils.py             WindData 序列化、错误码映射、结果合并
+│   └── handlers/
+│       ├── wsd.py           日期序列（多codes+多fields自动拆分）
+│       ├── wss.py           日截面
+│       ├── wsq.py           实时行情
+│       ├── wst.py           日内Tick
+│       ├── wset.py          数据集报表
+│       ├── wses.py          板块日序列
+│       ├── wsee.py          板块日截面
+│       ├── edb.py           宏观经济
+│       ├── tdays.py         交易日历
+│       ├── tdaysoffset.py   日期偏移
+│       └── tdayscount.py    交易日计数
+└── ui/                      React 前端
+    ├── App.tsx              主页面（查询/ETL/清洗/设置 四个 Tab）
+    ├── api/client.ts        API 客户端（支持 JSON 和 FormData 上传）
+    ├── config/
+    │   ├── windFunctions.ts Wind 函数配置（字段、提示、校验规则）
+    │   └── llmConfig.ts     LLM Provider 配置
+    ├── components/          表单、结果表格、状态指示器等
+    └── pages/               ETL、数据清洗、LLM 设置页面
+
+db/                          PostgreSQL DDL
+etl/                         数据入库脚本
+docus/                       Wind API 文档
+testdata/                    测试用 Excel 文件
+config/                      LLM 密钥配置（已 gitignore）
 ```
+
+## 测试
+
+```bash
+# 测试 Python Bridge（需要 Wind 终端运行）
+python src/python/wind_bridge.py '{"function":"tdays","params":{"beginTime":"2025-01-01","endTime":"2025-01-31"}}'
+
+# 测试 Excel 导入
+python src/python/wind_bridge.py '{"function":"wsd","params":{"fields":"close","excelPath":"testdata/sample_codes.xlsx"}}'
+```
+
+## 常见问题
+
+| 错误 | 原因 | 解决 |
+|------|------|------|
+| Wind start failed / ErrorCode: -2 | Wind 终端未运行或未登录 | 启动并登录 Wind 终端 |
+| No module named 'WindPy' | WindPy 不在 Python 路径 | 在 Wind 终端执行"插件修复" |
+| ErrorCode: -40522018 | WSD 不支持多codes+多fields | 已自动处理，逐个查询 |
+| ErrorCode: -40520007 | 数据权限不足 | 检查 Wind 账号数据权限 |
+| Python bridge exited with code 1 | Python 执行出错 | 查看后端终端日志 |

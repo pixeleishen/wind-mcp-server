@@ -32,7 +32,9 @@
       "WebSearch",
       "WebFetch(domain:www.modb.pro)",
       "WebFetch(domain:xueqiu.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && git push 2>&1)",
+      "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && git add -A && git commit -m \"docs: update README and ROADMAP with full Wind API coverage\" && git push 2>&1)"
     ]
   }
 }
