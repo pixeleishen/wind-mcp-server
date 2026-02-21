@@ -7,21 +7,22 @@
 .wrapper label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #444;
+  color: #ffb8d0;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .select {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #f0c0d0;
   border-radius: 6px;
   font-size: 0.95rem;
-  background: #fff;
+  background: #1a1a1a;
+  color: #ffb8d0;
   cursor: pointer;
 }
 
 .select:focus {
-  outline: 2px solid #4f6ef7;
+  outline: 2px solid #ff6b8a;
   outline-offset: 1px;
 }

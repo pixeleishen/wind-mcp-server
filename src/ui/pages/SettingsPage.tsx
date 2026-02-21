@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   loadLLMConfig, saveLLMConfig, defaultModel, callLLM,
   loadServerKeys, PROVIDER_LABELS, PROVIDER_MODELS,
-  type LLMConfig, type LLMProvider,
+  type LLMConfig, type LLMProvider, type ServerKeyInfo,
 } from "../config/llmConfig";
 import styles from "./SettingsPage.module.css";
 
@@ -13,13 +13,16 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [serverKeys, setServerKeys] = useState<Record<string, boolean>>({});
+  const [serverKeys, setServerKeys] = useState<Record<string, ServerKeyInfo>>({});
 
   useEffect(() => {
     loadServerKeys().then(setServerKeys);
   }, []);
 
-  const hasServerKey = !!serverKeys[config.provider];
+  const info = serverKeys[config.provider];
+  const hasServerKey = info?.hasKey ?? false;
+  const serverUrl = info?.url ?? "";
+  const canTest = hasServerKey || config.provider === "ollama";
 
   function set<K extends keyof LLMConfig>(key: K, value: LLMConfig[K]) {
     setSaved(false);
@@ -44,24 +47,22 @@ export default function SettingsPage() {
   }
 
   async function handleTest() {
-    if (!config.apiKey && !hasServerKey) {
-      setTestResult({ ok: false, msg: "请先填写 API Key" });
-      return;
-    }
+    if (!canTest) return;
     setTesting(true);
     setTestResult(null);
     try {
       const reply = await callLLM(config, "请回复「连接成功」四个字，不要其他内容。");
-      setTestResult({ ok: true, msg: `✓ 连接成功：${reply.trim()}` });
+      setTestResult({ ok: true, msg: `连接成功：${reply.trim()}` });
     } catch (e) {
-      setTestResult({ ok: false, msg: `✗ ${e instanceof Error ? e.message : String(e)}` });
+      setTestResult({ ok: false, msg: `${e instanceof Error ? e.message : String(e)}` });
     } finally {
       setTesting(false);
     }
   }
 
-  const baseUrlPlaceholder =
-    config.provider === "ollama"
+  const baseUrlPlaceholder = serverUrl
+    ? `服务端配置: ${serverUrl}`
+    : config.provider === "ollama"
       ? "http://localhost:11434"
       : "留空使用默认地址，或填写代理 URL";
 
@@ -76,35 +77,24 @@ export default function SettingsPage() {
             value={config.provider}
             onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
           >
-            {PROVIDERS.map((p) => (
-              <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
-            ))}
+            {PROVIDERS.map((p) => {
+              const pInfo = serverKeys[p];
+              const status = pInfo?.hasKey ? " (已配置)" : "";
+              return <option key={p} value={p}>{PROVIDER_LABELS[p]}{status}</option>;
+            })}
           </select>
         </div>
 
         <div className={styles.field}>
           <label>API Key</label>
-          {hasServerKey && !config.apiKey ? (
-            <>
-              <input type="text" value="已配置服务端密钥" readOnly disabled />
-              <span className={styles.hint}>如需覆盖，可在下方输入自定义 Key</span>
-            </>
-          ) : (
-            <>
-              <input
-                type="password"
-                value={config.apiKey}
-                onChange={(e) => set("apiKey", e.target.value)}
-                placeholder={config.provider === "ollama" ? "本地模型无需填写" : "sk-xxxx"}
-                autoComplete="off"
-              />
-              <span className={styles.hint}>
-                {hasServerKey
-                  ? "当前使用自定义 Key（清空后将回退到服务端密钥）"
-                  : "仅存储在浏览器 localStorage，不会上传到任何服务器"}
-              </span>
-            </>
-          )}
+          <div className={styles.keyStatus}>
+            {hasServerKey
+              ? <span className={styles.keyOk}>已在服务端配置</span>
+              : config.provider === "ollama"
+                ? <span className={styles.keyHint}>本地模型无需 Key</span>
+                : <span className={styles.keyMissing}>未配置（请在 config/llm-keys.json 中设置）</span>
+            }
+          </div>
         </div>
 
         <div className={styles.field}>
@@ -120,18 +110,26 @@ export default function SettingsPage() {
         </div>
 
         <div className={styles.field}>
-          <label>Base URL（可选）</label>
+          <label>Base URL（可选覆盖）</label>
           <input
             type="text"
             value={config.baseUrl}
             onChange={(e) => set("baseUrl", e.target.value)}
             placeholder={baseUrlPlaceholder}
           />
+          <span className={styles.hint}>
+            留空则使用服务端配置的 URL，服务端也未配置则使用默认地址
+          </span>
         </div>
 
         <div className={styles.actions}>
           <button className={styles.save} onClick={handleSave}>保存</button>
-          <button className={styles.testBtn} onClick={handleTest} disabled={testing}>
+          <button
+            className={styles.testBtn}
+            onClick={handleTest}
+            disabled={testing || !canTest}
+            title={canTest ? "" : "请先在 config/llm-keys.json 中配置 API Key"}
+          >
             {testing ? "测试中…" : "测试连接"}
           </button>
           {saved && <span className={styles.saved}>已保存</span>}

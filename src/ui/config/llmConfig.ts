@@ -3,7 +3,6 @@ export type LLMProvider = "openai" | "anthropic" | "deepseek" | "gemini" | "olla
 
 export interface LLMConfig {
   provider: LLMProvider;
-  apiKey: string;
   model: string;
   baseUrl: string;
 }
@@ -73,19 +72,28 @@ export function defaultModel(provider: LLMProvider): string {
 export function loadLLMConfig(): LLMConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as LLMConfig;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migration: drop apiKey if present from old config
+      return { provider: parsed.provider, model: parsed.model, baseUrl: parsed.baseUrl ?? "" };
+    }
   } catch { /* ignore */ }
-  return { provider: "openai", apiKey: "", model: "o3", baseUrl: "" };
+  return { provider: "openai", model: "o3", baseUrl: "" };
 }
 
 export function saveLLMConfig(config: LLMConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
-export async function loadServerKeys(): Promise<Record<string, boolean>> {
+export interface ServerKeyInfo {
+  hasKey: boolean;
+  url: string;
+}
+
+export async function loadServerKeys(): Promise<Record<string, ServerKeyInfo>> {
   try {
     const res = await fetch("/api/llm/keys");
-    const data = await res.json() as { keys: Record<string, boolean> };
+    const data = await res.json() as { keys: Record<string, ServerKeyInfo> };
     return data.keys;
   } catch {
     return {};
@@ -102,7 +110,7 @@ export async function callLLM(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider: config.provider,
-      apiKey:   config.apiKey || "",
+      apiKey:   "",
       model:    config.model,
       baseUrl:  config.baseUrl,
       prompt,

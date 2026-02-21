@@ -8,10 +8,10 @@
 }
 
 .card {
-  background: #fff;
-  border-radius: 8px;
+  background: #000;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(255,107,138,0.1);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -20,7 +20,7 @@
 .card h2 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: #ffb8d0;
   margin: 0;
 }
 
@@ -33,23 +33,24 @@
 .field label {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #333;
+  color: #ffb8d0;
 }
 
 .field input[type="text"],
 .field input[type="date"] {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #f0c0d0;
   border-radius: 6px;
   font-size: 0.95rem;
-  background: #fff;
+  background: #1a1a1a;
+  color: #ffb8d0;
   transition: border-color 0.15s;
 }
 
 .field input:focus {
-  outline: 2px solid #4f6ef7;
+  outline: 2px solid #ff6b8a;
   outline-offset: 1px;
-  border-color: #4f6ef7;
+  border-color: #ff6b8a;
 }
 
 .checkbox {
@@ -57,7 +58,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #333;
+  color: #ffb8d0;
 }
 
 .checkbox input {
@@ -67,7 +68,7 @@
 
 .runBtn {
   padding: 0.55rem 1.5rem;
-  background: #4f6ef7;
+  background: #ff6b8a;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -79,7 +80,7 @@
 }
 
 .runBtn:hover:not(:disabled) {
-  background: #3a57e8;
+  background: #e8527a;
 }
 
 .runBtn:disabled {
@@ -88,7 +89,7 @@
 }
 
 .logArea {
-  background: #1a1a2e;
+  background: #3d2b3d;
   color: #d4d4d4;
   font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 0.82rem;

@@ -1,0 +1,175 @@
+.page {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffb8d0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: #000;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(255,107,138,0.1);
+}
+
+.actionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.actionGroup > label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ffb8d0;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #f0c0d0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #1a1a1a;
+  color: #ffb8d0;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  outline: 2px solid #ff6b8a;
+  outline-offset: 1px;
+  border-color: #ff6b8a;
+}
+
+.fileInput {
+  font-size: 0.9rem;
+}
+
+.btn {
+  padding: 0.5rem 1.2rem;
+  background: #ff6b8a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #e8527a;
+}
+
+.btn:disabled {
+  background: #e8b4c8;
+  cursor: not-allowed;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: #ffb8d0;
+}
+
+.error {
+  padding: 0.6rem 1rem;
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  border-radius: 6px;
+  color: #c53030;
+  font-size: 0.85rem;
+}
+
+.success {
+  padding: 0.6rem 1rem;
+  background: #f0fff4;
+  border: 1px solid #9ae6b4;
+  border-radius: 6px;
+  color: #276749;
+  font-size: 0.85rem;
+}
+
+.loading {
+  color: #ffb8d0;
+  font-size: 0.9rem;
+}
+
+.tableWrap {
+  background: #000;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(255,107,138,0.1);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+  background: #1a1a1a;
+  font-weight: 600;
+  color: #ffb8d0;
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:hover {
+  background: #1a1a1a;
+}
+
+.empty {
+  text-align: center;
+  color: #e8b4c8;
+  padding: 2rem 0;
+}
+
+.deleteBtn {
+  padding: 0.25rem 0.6rem;
+  background: #e53e3e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  background: #c53030;
+}
+
+.count {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #ffb8d0;
+  text-align: right;
+}

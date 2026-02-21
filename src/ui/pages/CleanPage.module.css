@@ -39,15 +39,15 @@
 }
 
 .bubbleUser {
-  background: #4f6ef7;
+  background: #ff6b8a;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
 .bubbleAssistant {
-  background: #fff;
-  color: #1a1a2e;
-  border: 1px solid #e0e0e0;
+  background: #1a1a1a;
+  color: #ffb8d0;
+  border: 1px solid #f0c0d0;
   border-bottom-left-radius: 4px;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .codeBlock pre {
-  background: #1a1a2e;
+  background: #3d2b3d;
   color: #d4d4d4;
   font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 0.82rem;
@@ -75,7 +75,7 @@
   top: 0.5rem;
   right: 0.5rem;
   padding: 0.3rem 0.8rem;
-  background: #4f6ef7;
+  background: #ff6b8a;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -84,7 +84,7 @@
 }
 
 .runBtn:hover:not(:disabled) {
-  background: #3a57e8;
+  background: #e8527a;
 }
 
 .runBtn:disabled {
@@ -93,7 +93,7 @@
 }
 
 .logArea {
-  background: #1a1a2e;
+  background: #3d2b3d;
   color: #d4d4d4;
   font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 0.82rem;
@@ -135,30 +135,32 @@
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 0;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid #f0c0d0;
 }
 
 .inputBar textarea {
   flex: 1;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #f0c0d0;
   border-radius: 8px;
   font-size: 0.92rem;
   font-family: inherit;
   resize: none;
   min-height: 2.5rem;
   max-height: 6rem;
+  background: #1a1a1a;
+  color: #ffb8d0;
 }
 
 .inputBar textarea:focus {
-  outline: 2px solid #4f6ef7;
+  outline: 2px solid #ff6b8a;
   outline-offset: 1px;
-  border-color: #4f6ef7;
+  border-color: #ff6b8a;
 }
 
 .sendBtn {
   padding: 0.5rem 1.2rem;
-  background: #4f6ef7;
+  background: #ff6b8a;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -169,7 +171,7 @@
 }
 
 .sendBtn:hover:not(:disabled) {
-  background: #3a57e8;
+  background: #e8527a;
 }
 
 .sendBtn:disabled {
@@ -179,7 +181,7 @@
 
 .loading {
   text-align: center;
-  color: #888;
+  color: #ffb8d0;
   padding: 1rem;
   font-size: 0.9rem;
 }

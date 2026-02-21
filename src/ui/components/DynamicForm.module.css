@@ -13,7 +13,7 @@
 .field label {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #333;
+  color: #ffb8d0;
 }
 
 .required {
@@ -22,17 +22,18 @@
 
 .field input {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #f0c0d0;
   border-radius: 6px;
   font-size: 0.95rem;
-  background: #fff;
+  background: #1a1a1a;
+  color: #ffb8d0;
   transition: border-color 0.15s;
 }
 
 .field input:focus {
-  outline: 2px solid #4f6ef7;
+  outline: 2px solid #ff6b8a;
   outline-offset: 1px;
-  border-color: #4f6ef7;
+  border-color: #ff6b8a;
 }
 
 .field input:disabled {
@@ -42,13 +43,13 @@
 
 .hint {
   font-size: 0.78rem;
-  color: #888;
+  color: #ffb8d0;
 }
 
 .submit {
   align-self: flex-start;
   padding: 0.55rem 1.5rem;
-  background: #4f6ef7;
+  background: #ff6b8a;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -59,11 +60,11 @@
 }
 
 .submit:hover:not(:disabled) {
-  background: #3a57e8;
+  background: #e8527a;
 }
 
 .submit:disabled {
-  background: #a0aec0;
+  background: #e8b4c8;
   cursor: not-allowed;
 }
 
@@ -90,6 +91,30 @@
 
 .fileClear:hover {
   background: #c53030;
+}
+
+.checkboxRow {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #ffb8d0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #ff6b8a;
+  cursor: pointer;
 }
 
 .validationError {

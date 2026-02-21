@@ -5,7 +5,7 @@
 }
 
 .header {
-  background: #1a1a2e;
+  background: linear-gradient(135deg, #ff8fab, #ff6b8a);
   color: #fff;
   padding: 1rem 2rem;
   display: flex;
@@ -16,6 +16,7 @@
 .header h1 {
   font-size: 1.25rem;
   font-weight: 600;
+  color: #fff;
 }
 
 .main {
@@ -30,22 +31,22 @@
 }
 
 .formPanel {
-  background: #fff;
-  border-radius: 8px;
+  background: #000;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(255,107,138,0.1);
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
 .description {
-  color: #555;
+  color: #ffb8d0;
   font-size: 0.875rem;
 }
 
 .loading {
-  color: #555;
+  color: #ffb8d0;
   font-size: 0.9rem;
   padding: 1rem 0;
 }
@@ -72,7 +73,16 @@
 }
 
 .navActive {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.25);
   color: #fff;
   border-color: rgba(255,255,255,0.5);
+}
+
+.savedMsg {
+  padding: 0.6rem 1rem;
+  background: #f0fff4;
+  border: 1px solid #9ae6b4;
+  border-radius: 6px;
+  color: #276749;
+  font-size: 0.9rem;
 }

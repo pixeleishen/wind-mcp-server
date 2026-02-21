@@ -6,6 +6,7 @@ import { transformWindData, type TableResult } from "./utils/transformData";
 import { useWindStatus } from "./hooks/useWindStatus";
 import FunctionSelector from "./components/FunctionSelector";
 import DynamicForm from "./components/DynamicForm";
+import type { SubmitOptions } from "./components/DynamicForm";
 import QueryPreview from "./components/QueryPreview";
 import ResultTable from "./components/ResultTable";
 import ErrorBanner from "./components/ErrorBanner";
@@ -13,10 +14,11 @@ import StatusIndicator from "./components/StatusIndicator";
 import SettingsPage from "./pages/SettingsPage";
 import EtlPage from "./pages/EtlPage";
 import CleanPage from "./pages/CleanPage";
+import AssetsPage from "./pages/AssetsPage";
 import styles from "./App.module.css";
 
 type Status = "idle" | "loading" | "success" | "error";
-type Page = "query" | "etl" | "clean" | "settings";
+type Page = "query" | "assets" | "etl" | "clean" | "settings";
 
 function emptyValues(config: WindFunctionConfig): Record<string, string> {
   return Object.fromEntries(config.fields.map((f) => [f.key, ""]));
@@ -33,6 +35,8 @@ export default function App() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TableResult | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(true);
 
   const fnConfig = WIND_FUNCTIONS.find((f) => f.id === selectedFn)!;
 
@@ -42,26 +46,37 @@ export default function App() {
     setResult(null);
     setError(null);
     setStatus("idle");
+    setSavedMsg(null);
   }
 
   function handleFieldChange(key: string, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSubmit(params: Record<string, string>, excelFile?: File) {
+  async function handleSubmit(params: Record<string, string>, options: SubmitOptions, excelFile?: File) {
     setStatus("loading");
     setError(null);
     setResult(null);
+    setSavedMsg(null);
+    setShowResult(options.showData);
     try {
-      const res = await queryWind({ function: selectedFn, params }, excelFile);
+      const res = await queryWind(
+        { function: selectedFn, params, showData: options.showData, saveToDB: options.saveToDB },
+        excelFile,
+      );
       if (!res.ok || !res.data) {
         throw new Error(res.error ?? "Query returned no data");
       }
-      const table = transformWindData(res.data);
-      if (table.rows.length === 0) {
-        throw new Error("No data returned for this query.");
+      if (options.showData) {
+        const table = transformWindData(res.data);
+        if (table.rows.length === 0) {
+          throw new Error("No data returned for this query.");
+        }
+        setResult(table);
       }
-      setResult(table);
+      if (res.saved) {
+        setSavedMsg("数据已成功入库");
+      }
       setStatus("success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -72,12 +87,16 @@ export default function App() {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1>Wind Data Query</h1>
+        <h1>🎀 Shuqiberry's Little World 🎀</h1>
         <nav className={styles.nav}>
           <button
             className={`${styles.navBtn} ${page === "query" ? styles.navActive : ""}`}
             onClick={() => setPage("query")}
           >数据查询</button>
+          <button
+            className={`${styles.navBtn} ${page === "assets" ? styles.navActive : ""}`}
+            onClick={() => setPage("assets")}
+          >资产管理</button>
           <button
             className={`${styles.navBtn} ${page === "etl" ? styles.navActive : ""}`}
             onClick={() => setPage("etl")}
@@ -99,6 +118,8 @@ export default function App() {
         <EtlPage />
       ) : page === "clean" ? (
         <CleanPage />
+      ) : page === "assets" ? (
+        <AssetsPage />
       ) : (
         <main className={styles.main}>
           <section className={styles.formPanel}>
@@ -119,7 +140,8 @@ export default function App() {
           </section>
           {status === "error" && error && <ErrorBanner message={error} />}
           {status === "loading" && <div className={styles.loading}>Querying Wind…</div>}
-          {status === "success" && result && <ResultTable result={result} />}
+          {savedMsg && <div className={styles.savedMsg}>{savedMsg}</div>}
+          {status === "success" && showResult && result && <ResultTable result={result} />}
         </main>
       )}
     </div>

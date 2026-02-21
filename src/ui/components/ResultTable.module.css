@@ -1,13 +1,13 @@
 .wrapper {
-  background: #fff;
-  border-radius: 8px;
+  background: #000;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(255,107,138,0.1);
 }
 
 .count {
   font-size: 0.85rem;
-  color: #555;
+  color: #ffb8d0;
   margin-bottom: 0.75rem;
 }
 
@@ -24,18 +24,20 @@
 .table th {
   text-align: left;
   padding: 0.5rem 0.75rem;
-  background: #f0f2ff;
-  border-bottom: 2px solid #d0d5f5;
+  background: #1a1a1a;
+  border-bottom: 2px solid #ffb3cc;
   font-weight: 600;
   white-space: nowrap;
+  color: #ffb8d0;
 }
 
 .table td {
   padding: 0.45rem 0.75rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #333;
   white-space: nowrap;
+  color: #ffb8d0;
 }
 
 .table tbody tr:hover {
-  background: #f9f9ff;
+  background: #1a1a1a;
 }

@@ -2,11 +2,16 @@ import { type FormEvent, type KeyboardEvent, useRef, useState } from "react";
 import type { WindFunctionConfig } from "../config/windFunctions";
 import styles from "./DynamicForm.module.css";
 
+export interface SubmitOptions {
+  showData: boolean;
+  saveToDB: boolean;
+}
+
 interface Props {
   config: WindFunctionConfig;
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
-  onSubmit: (params: Record<string, string>, excelFile?: File) => void;
+  onSubmit: (params: Record<string, string>, options: SubmitOptions, excelFile?: File) => void;
   loading: boolean;
 }
 
@@ -16,6 +21,8 @@ const EXCEL_KEYS = ["codes", "beginTime", "endTime"];
 export default function DynamicForm({ config, values, onChange, onSubmit, loading }: Props) {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showData, setShowData] = useState(true);
+  const [saveToDB, setSaveToDB] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const hasCodesField = config.fields.some((f) => f.key === "codes");
@@ -27,6 +34,11 @@ export default function DynamicForm({ config, values, onChange, onSubmit, loadin
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setValidationError(null);
+
+    if (!showData && !saveToDB) {
+      setValidationError("请至少选择「展示数据」或「入库保存」中的一项");
+      return;
+    }
 
     const params = Object.fromEntries(
       Object.entries(values).filter(([, v]) => v.trim() !== "")
@@ -42,7 +54,7 @@ export default function DynamicForm({ config, values, onChange, onSubmit, loadin
       }
     }
 
-    onSubmit(params, excelFile ?? undefined);
+    onSubmit(params, { showData, saveToDB }, excelFile ?? undefined);
   }
 
   function handleFileClear() {
@@ -109,6 +121,27 @@ export default function DynamicForm({ config, values, onChange, onSubmit, loadin
           </span>
         </div>
       )}
+
+      <div className={styles.checkboxRow}>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={showData}
+            onChange={(e) => setShowData(e.target.checked)}
+            disabled={loading}
+          />
+          展示数据
+        </label>
+        <label className={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={saveToDB}
+            onChange={(e) => setSaveToDB(e.target.checked)}
+            disabled={loading}
+          />
+          入库保存
+        </label>
+      </div>
 
       {validationError && (
         <div className={styles.validationError}>{validationError}</div>
