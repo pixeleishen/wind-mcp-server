@@ -10,6 +10,8 @@ import { spawn, type ChildProcess } from "child_process";
 import { runBridge } from "./bridge/runner.js";
 import type { BridgeRequest } from "./bridge/types.js";
 
+const PYTHON = process.env.PYTHON_PATH || "C:\\Users\\Pixel\\AppData\\Local\\Python\\bin\\python.exe";
+
 const upload = multer({ dest: path.join(os.tmpdir(), "wind-uploads") });
 
 const KEYS_PATH = path.resolve(import.meta.dirname ?? ".", "../config/llm-keys.json");
@@ -208,7 +210,7 @@ app.post("/api/llm/generate", async (req, res) => {
 
 // ── Schema context endpoint ──────────────────────────────
 app.get("/api/clean/schema-context", (_req, res) => {
-  const child = spawn("python", ["etl/schema_inspector.py"], {
+  const child = spawn(PYTHON, ["etl/schema_inspector.py"], {
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -260,7 +262,7 @@ app.post("/api/clean/run", (req, res) => {
     Connection: "keep-alive",
   });
 
-  const child = spawn("python", ["etl/clean_runner.py", "--script", tmpFile], {
+  const child = spawn(PYTHON, ["etl/clean_runner.py", "--script", tmpFile], {
     stdio: ["ignore", "pipe", "pipe"],
   });
   activeClean = child;
@@ -334,7 +336,7 @@ app.post("/api/etl/run", (req, res) => {
   if (start) args.push("--start", start);
   if (noIncremental) args.push("--no-incremental");
 
-  const child = spawn("python", args, { stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(PYTHON, args, { stdio: ["ignore", "pipe", "pipe"] });
   activeEtl = child;
 
   const send = (obj: unknown) => {

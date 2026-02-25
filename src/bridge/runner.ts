@@ -5,11 +5,12 @@ import type { BridgeRequest, BridgeResponse } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BRIDGE_PATH = join(__dirname, "..", "python", "wind_bridge.py");
+const PYTHON = process.env.PYTHON_PATH || "C:\\Users\\Pixel\\AppData\\Local\\Python\\bin\\python.exe";
 
 export function runBridge<T = unknown>(request: BridgeRequest): Promise<BridgeResponse<T>> {
   return new Promise((resolve, reject) => {
     const arg = JSON.stringify(request);
-    const proc = spawn("python", [BRIDGE_PATH, arg]);
+    const proc = spawn(PYTHON, [BRIDGE_PATH, arg]);
 
     let stdout = "";
     let stderr = "";
