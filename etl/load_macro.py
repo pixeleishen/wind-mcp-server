@@ -1,6 +1,6 @@
 """
 宏观经济指标入库（增量）
-Wind edb → raw.macro_indicators
+Wind edb → raw.indicator_series
 """
 import logging
 from datetime import date, timedelta
@@ -10,12 +10,27 @@ from base import call_wind, get_conn, put_conn, upsert
 logger = logging.getLogger(__name__)
 
 
-def _get_last_date(conn, indicator_code: str) -> date | None:
+def _ensure_indicator(conn, code: str, name: str | None = None) -> int:
+    """确保 meta.indicators 中存在该指标，返回 id。"""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT MAX(trade_date) FROM raw.macro_indicators"
-            " WHERE indicator_code = %s",
-            (indicator_code,),
+            "INSERT INTO meta.indicators (indicator_code, indicator_name, category)"
+            " VALUES (%s, %s, 'macro')"
+            " ON CONFLICT (indicator_code) DO UPDATE SET indicator_name = COALESCE(EXCLUDED.indicator_name, meta.indicators.indicator_name)"
+            " RETURNING id",
+            (code, name),
+        )
+        ind_id = cur.fetchone()[0]
+    conn.commit()
+    return ind_id
+
+
+def _get_last_date(conn, indicator_id: int) -> date | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT MAX(trade_date) FROM raw.indicator_series"
+            " WHERE indicator_id = %s",
+            (indicator_id,),
         )
         row = cur.fetchone()
     return row[0] if row and row[0] else None
@@ -28,8 +43,7 @@ def load_macro(
     incremental: bool = True,
 ) -> dict[str, int]:
     """
-    批量拉取宏观指标并写入 raw.macro_indicators。
-    indicator_codes — Wind EDB 指标代码列表，如 ["M0001385", "M0001227"]
+    批量拉取宏观指标并写入 raw.indicator_series。
     返回 {indicator_code: 写入行数} 字典。
     """
     if end is None:
@@ -40,9 +54,11 @@ def load_macro(
     conn = get_conn()
     try:
         for code in indicator_codes:
+            ind_id = _ensure_indicator(conn, code)
+
             fetch_start = start
             if incremental:
-                last = _get_last_date(conn, code)
+                last = _get_last_date(conn, ind_id)
                 if last:
                     fetch_start = (last + timedelta(days=1)).strftime("%Y-%m-%d")
                     if fetch_start > end:
@@ -66,29 +82,32 @@ def load_macro(
                 results[code] = 0
                 continue
 
-            # edb 返回格式：{"data": [{"indicator_code":..,"date":..,"value":..}]}
             raw_rows = data.get("data", [])
             if not raw_rows:
                 logger.warning(f"{code} 无数据")
                 results[code] = 0
                 continue
 
+            # 更新 indicator_name（如果 edb 返回了名称）
+            first_name = raw_rows[0].get("name")
+            if first_name:
+                _ensure_indicator(conn, code, first_name)
+
             rows = [
                 {
-                    "indicator_code": code,
-                    "indicator_name": r.get("name"),
-                    "trade_date":     r.get("date") or r.get("trade_date"),
-                    "value":          r.get("value"),
+                    "indicator_id": ind_id,
+                    "trade_date": r.get("date") or r.get("trade_date"),
+                    "value": r.get("value"),
                 }
                 for r in raw_rows
             ]
 
             n = upsert(
                 conn,
-                table="raw.macro_indicators",
+                table="raw.indicator_series",
                 rows=rows,
-                conflict_cols=["indicator_code", "trade_date"],
-                update_cols=["value", "indicator_name"],
+                conflict_cols=["indicator_id", "trade_date"],
+                update_cols=["value"],
             )
             logger.info(f"{code} 写入 {n} 行")
             results[code] = n
@@ -100,6 +119,5 @@ def load_macro(
 
 
 if __name__ == "__main__":
-    # 示例：M2 同比增速、CPI 同比
     sample_codes = ["M0001385", "M0001227"]
     load_macro(sample_codes)

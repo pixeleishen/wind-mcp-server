@@ -1,6 +1,6 @@
 """
-快照基本面指标入库 + forward-fill（增量）
-Wind wss → raw.daily_fundamentals
+快照基本面指标入库（增量）
+Wind wss → raw.indicator_series
 wss 返回无时间轴的快照值，ETL 将其 forward-fill 到全部交易日。
 """
 import logging
@@ -10,21 +10,29 @@ from base import call_wind, get_conn, put_conn, upsert
 
 logger = logging.getLogger(__name__)
 
-# wss 字段映射：Wind 字段名 → 数据库列名
-WSS_FIELDS = {
-    "pe_ttm":    "pe_ttm",
-    "pb_mrq":    "pb_mrq",
-    "ps_ttm":    "ps_ttm",
-    "pcf_ttm":   "pcf_ttm",
-    "mkt_cap":   "mkt_cap",
-    "float_cap": "float_cap",
-    "roe_ttm":   "roe_ttm",
-    "roa_ttm":   "roa_ttm",
-}
+# wss 字段映射：Wind 字段名 → indicator category
+WSS_FIELDS = [
+    "pe_ttm", "pb_mrq", "ps_ttm", "pcf_ttm",
+    "mkt_cap", "float_cap", "roe_ttm", "roa_ttm",
+]
+
+
+def _ensure_indicator(conn, code: str, name: str | None = None) -> int:
+    """确保 meta.indicators 中存在该指标，返回 id。"""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO meta.indicators (indicator_code, indicator_name, category)"
+            " VALUES (%s, %s, 'fundamental')"
+            " ON CONFLICT (indicator_code) DO UPDATE SET indicator_code = EXCLUDED.indicator_code"
+            " RETURNING id",
+            (code, name),
+        )
+        ind_id = cur.fetchone()[0]
+    conn.commit()
+    return ind_id
 
 
 def _get_trading_dates(conn, after: date | None = None) -> list[str]:
-    """获取 trading_calendar 中所有（或指定日期之后的）交易日。"""
     with conn.cursor() as cur:
         if after:
             cur.execute(
@@ -39,11 +47,11 @@ def _get_trading_dates(conn, after: date | None = None) -> list[str]:
         return [row[0].strftime("%Y-%m-%d") for row in cur.fetchall()]
 
 
-def _get_last_date(conn, code: str) -> date | None:
+def _get_last_date(conn, indicator_id: int) -> date | None:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT MAX(trade_date) FROM raw.daily_fundamentals WHERE code = %s",
-            (code,),
+            "SELECT MAX(trade_date) FROM raw.indicator_series WHERE indicator_id = %s",
+            (indicator_id,),
         )
         row = cur.fetchone()
     return row[0] if row and row[0] else None
@@ -55,23 +63,16 @@ def load_fundamentals(
 ) -> dict[str, int]:
     """
     拉取 wss 快照指标并 forward-fill 到全部缺失交易日。
+    每个 wss 字段作为独立指标写入 raw.indicator_series。
     返回 {code: 写入行数} 字典。
     """
-    wind_fields = ",".join(WSS_FIELDS.keys())
+    wind_fields = ",".join(WSS_FIELDS)
     results: dict[str, int] = {}
 
     conn = get_conn()
     try:
         for code in codes:
-            last = _get_last_date(conn, code) if incremental else None
-            missing_dates = _get_trading_dates(conn, after=last)
-
-            if not missing_dates:
-                logger.info(f"{code} 基本面已是最新，跳过")
-                results[code] = 0
-                continue
-
-            logger.info(f"拉取基本面快照 {code}（将 fill 到 {len(missing_dates)} 个交易日）")
+            logger.info(f"拉取基本面快照 {code}")
             try:
                 data = call_wind(
                     "wss",
@@ -82,32 +83,44 @@ def load_fundamentals(
                 results[code] = 0
                 continue
 
-            # wss 返回格式：{"data": [{"code":..,"pe_ttm":..,...}]}
             raw_rows = data.get("data", [])
             if not raw_rows:
                 logger.warning(f"{code} wss 无数据")
                 results[code] = 0
                 continue
 
-            snapshot = raw_rows[0]  # wss 每个 code 返回一行快照
+            snapshot = raw_rows[0]
+            total = 0
 
-            # forward-fill：将快照值复制到全部缺失交易日
-            rows = []
-            for td in missing_dates:
-                row = {"code": code, "trade_date": td}
-                for wind_col, db_col in WSS_FIELDS.items():
-                    row[db_col] = snapshot.get(wind_col)
-                rows.append(row)
+            for field in WSS_FIELDS:
+                val = snapshot.get(field)
+                if val is None:
+                    continue
 
-            n = upsert(
-                conn,
-                table="raw.daily_fundamentals",
-                rows=rows,
-                conflict_cols=["code", "trade_date"],
-                update_cols=list(WSS_FIELDS.values()),
-            )
-            logger.info(f"{code} 基本面写入 {n} 行")
-            results[code] = n
+                ind_code = f"{code}:{field}"
+                ind_id = _ensure_indicator(conn, ind_code, f"{code} {field}")
+
+                last = _get_last_date(conn, ind_id) if incremental else None
+                missing_dates = _get_trading_dates(conn, after=last)
+                if not missing_dates:
+                    continue
+
+                rows = [
+                    {"indicator_id": ind_id, "trade_date": td, "value": val}
+                    for td in missing_dates
+                ]
+
+                n = upsert(
+                    conn,
+                    table="raw.indicator_series",
+                    rows=rows,
+                    conflict_cols=["indicator_id", "trade_date"],
+                    update_cols=["value"],
+                )
+                total += n
+
+            logger.info(f"{code} 基本面写入 {total} 行")
+            results[code] = total
 
     finally:
         put_conn(conn)

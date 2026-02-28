@@ -3,102 +3,133 @@
 -- PostgreSQL
 -- ============================================================
 
--- ============================================================
 -- Schema 分层
--- raw.*       Wind 原始数据（只写入，不修改）
--- processed.* 清洗/加工后数据（因子计算的输入）
--- factors.*   因子值（因子模型的输出）
--- ============================================================
+CREATE SCHEMA IF NOT EXISTS meta;
 CREATE SCHEMA IF NOT EXISTS raw;
 CREATE SCHEMA IF NOT EXISTS processed;
 CREATE SCHEMA IF NOT EXISTS factors;
 
 -- ============================================================
--- 交易日历（tdays 结果）
+-- meta schema — 元数据层
 -- ============================================================
+
+CREATE TABLE IF NOT EXISTS meta.macro_scenarios (
+    id              SERIAL PRIMARY KEY,
+    scenario_name   TEXT NOT NULL UNIQUE,
+    description     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS meta.indicators (
+    id              SERIAL PRIMARY KEY,
+    indicator_code  TEXT NOT NULL UNIQUE,
+    indicator_name  TEXT,
+    category        TEXT,
+    is_change_val   BOOLEAN DEFAULT FALSE,
+    calc_method     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS meta.assets (
+    id              SERIAL PRIMARY KEY,
+    asset_code      TEXT NOT NULL UNIQUE,
+    asset_name      TEXT,
+    asset_class     TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS meta.correlation_mappings (
+    id                      SERIAL PRIMARY KEY,
+    scenario_id             INT REFERENCES meta.macro_scenarios(id),
+    indicator_id            INT REFERENCES meta.indicators(id),
+    asset_id                INT REFERENCES meta.assets(id),
+    expected_relationship   TEXT,
+    validation_model        TEXT,
+    created_at              TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(scenario_id, indicator_id, asset_id)
+);
+
+CREATE TABLE IF NOT EXISTS meta.wind_query_templates (
+    id                  SERIAL PRIMARY KEY,
+    query_name          TEXT NOT NULL,
+    wind_function       TEXT NOT NULL,
+    wind_params         JSONB NOT NULL,
+    data_type           TEXT NOT NULL,
+    target_indicator_id INT REFERENCES meta.indicators(id),
+    target_asset_id     INT REFERENCES meta.assets(id),
+    update_frequency    TEXT,
+    created_at          TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================================
+-- raw schema — 原始数据层
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS raw.trading_calendar (
     trade_date DATE PRIMARY KEY
 );
 
--- ============================================================
--- 资产主表
--- ============================================================
-CREATE TABLE IF NOT EXISTS raw.assets (
-    code        TEXT PRIMARY KEY,   -- e.g. 000001.SZ
-    name        TEXT,
-    asset_type  TEXT                -- stock / index / fund / future
-);
-
--- ============================================================
--- 日度行情（wsd 结果）
--- ============================================================
 CREATE TABLE IF NOT EXISTS raw.daily_prices (
-    code        TEXT    NOT NULL REFERENCES raw.assets(code),
-    trade_date  DATE    NOT NULL REFERENCES raw.trading_calendar(trade_date),
-    open        FLOAT,
-    high        FLOAT,
-    low         FLOAT,
-    close       FLOAT,
-    volume      FLOAT,
-    amount      FLOAT,
-    pct_chg     FLOAT,
-    adj_factor  FLOAT,
-    PRIMARY KEY (code, trade_date)
+    asset_id    INT  NOT NULL REFERENCES meta.assets(id),
+    trade_date  DATE NOT NULL REFERENCES raw.trading_calendar(trade_date),
+    open        DOUBLE PRECISION,
+    high        DOUBLE PRECISION,
+    low         DOUBLE PRECISION,
+    close       DOUBLE PRECISION,
+    volume      DOUBLE PRECISION,
+    amount      DOUBLE PRECISION,
+    pct_chg     DOUBLE PRECISION,
+    adj_factor  DOUBLE PRECISION,
+    PRIMARY KEY (asset_id, trade_date)
+);
+
+CREATE TABLE IF NOT EXISTS raw.indicator_series (
+    indicator_id  INT  NOT NULL REFERENCES meta.indicators(id),
+    trade_date    DATE NOT NULL,
+    value         DOUBLE PRECISION,
+    PRIMARY KEY (indicator_id, trade_date)
 );
 
 -- ============================================================
--- 快照指标（wss 结果，无时间轴 → forward-fill 到全部交易日）
+-- processed schema — 清洗后数据层
 -- ============================================================
-CREATE TABLE IF NOT EXISTS raw.daily_fundamentals (
-    code        TEXT    NOT NULL REFERENCES raw.assets(code),
-    trade_date  DATE    NOT NULL REFERENCES raw.trading_calendar(trade_date),
-    pe_ttm      FLOAT,
-    pb_mrq      FLOAT,
-    ps_ttm      FLOAT,
-    pcf_ttm     FLOAT,
-    mkt_cap     FLOAT,
-    float_cap   FLOAT,
-    roe_ttm     FLOAT,
-    roa_ttm     FLOAT,
-    PRIMARY KEY (code, trade_date)
+
+CREATE TABLE IF NOT EXISTS processed.cleaned_series (
+    series_type   TEXT NOT NULL,
+    source_id     INT  NOT NULL,
+    trade_date    DATE NOT NULL,
+    field_name    TEXT NOT NULL,
+    value         DOUBLE PRECISION,
+    PRIMARY KEY (series_type, source_id, trade_date, field_name)
 );
 
 -- ============================================================
--- 宏观经济指标（edb 结果）
+-- factors schema — 因子层
 -- ============================================================
-CREATE TABLE IF NOT EXISTS raw.macro_indicators (
-    indicator_code  TEXT    NOT NULL,
-    indicator_name  TEXT,
-    trade_date      DATE    NOT NULL,
-    value           FLOAT,
-    PRIMARY KEY (indicator_code, trade_date)
-);
 
--- ============================================================
--- 因子值表（factors schema）
--- ============================================================
 CREATE TABLE IF NOT EXISTS factors.values (
-    factor_name TEXT    NOT NULL,
-    code        TEXT    NOT NULL,
-    trade_date  DATE    NOT NULL,
-    value       FLOAT,
-    PRIMARY KEY (factor_name, code, trade_date)
+    factor_name TEXT NOT NULL,
+    factor_type TEXT,
+    trade_date  DATE NOT NULL,
+    value       DOUBLE PRECISION,
+    PRIMARY KEY (factor_name, trade_date)
 );
 
 -- ============================================================
 -- 索引优化
 -- ============================================================
-CREATE INDEX IF NOT EXISTS idx_daily_prices_code
-    ON raw.daily_prices (code, trade_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_daily_fundamentals_code
-    ON raw.daily_fundamentals (code, trade_date DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_prices_asset
+    ON raw.daily_prices (asset_id, trade_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_macro_indicators_code
-    ON raw.macro_indicators (indicator_code, trade_date DESC);
+CREATE INDEX IF NOT EXISTS idx_indicator_series_ind
+    ON raw.indicator_series (indicator_id, trade_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_cleaned_series_lookup
+    ON processed.cleaned_series (series_type, source_id, trade_date DESC);
 
 CREATE INDEX IF NOT EXISTS idx_factors_values_factor
     ON factors.values (factor_name, trade_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_factors_values_code
-    ON factors.values (code, trade_date DESC);
+CREATE INDEX IF NOT EXISTS idx_correlation_mappings_scenario
+    ON meta.correlation_mappings (scenario_id);

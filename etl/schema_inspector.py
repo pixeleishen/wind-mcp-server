@@ -66,8 +66,10 @@ def main():
     conn = get_conn()
     try:
         result = {
+            "meta": inspect_schema(conn, "meta"),
             "raw": inspect_schema(conn, "raw"),
             "processed": inspect_schema(conn, "processed"),
+            "factors": inspect_schema(conn, "factors"),
         }
         print(json.dumps(result, ensure_ascii=False, indent=2))
     finally:

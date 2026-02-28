@@ -22,24 +22,28 @@ WSD_FIELDS = {
 }
 
 
-def _get_last_date(conn, code: str) -> date | None:
+def _get_last_date(conn, asset_id: int) -> date | None:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT MAX(trade_date) FROM raw.daily_prices WHERE code = %s",
-            (code,),
+            "SELECT MAX(trade_date) FROM raw.daily_prices WHERE asset_id = %s",
+            (asset_id,),
         )
         row = cur.fetchone()
     return row[0] if row and row[0] else None
 
 
-def _ensure_asset(conn, code: str) -> None:
+def _ensure_asset(conn, code: str) -> int:
+    """确保 meta.assets 中存在该资产，返回 asset id。"""
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO raw.assets (code, asset_type) VALUES (%s, 'stock')"
-            " ON CONFLICT (code) DO NOTHING",
+            "INSERT INTO meta.assets (asset_code, asset_class) VALUES (%s, 'stock')"
+            " ON CONFLICT (asset_code) DO UPDATE SET asset_code = EXCLUDED.asset_code"
+            " RETURNING id",
             (code,),
         )
+        asset_id = cur.fetchone()[0]
     conn.commit()
+    return asset_id
 
 
 def load_prices(
@@ -62,11 +66,11 @@ def load_prices(
     conn = get_conn()
     try:
         for code in codes:
-            _ensure_asset(conn, code)
+            asset_id = _ensure_asset(conn, code)
 
             fetch_start = start
             if incremental:
-                last = _get_last_date(conn, code)
+                last = _get_last_date(conn, asset_id)
                 if last:
                     fetch_start = (last + timedelta(days=1)).strftime("%Y-%m-%d")
                     if fetch_start > end:
@@ -100,7 +104,7 @@ def load_prices(
 
             rows = []
             for r in raw_rows:
-                row = {"code": code, "trade_date": r["trade_date"]}
+                row = {"asset_id": asset_id, "trade_date": r["trade_date"]}
                 for wind_col, db_col in WSD_FIELDS.items():
                     row[db_col] = r.get(wind_col)
                 rows.append(row)
@@ -109,7 +113,7 @@ def load_prices(
                 conn,
                 table="raw.daily_prices",
                 rows=rows,
-                conflict_cols=["code", "trade_date"],
+                conflict_cols=["asset_id", "trade_date"],
                 update_cols=list(WSD_FIELDS.values()),
             )
             logger.info(f"{code} 写入 {n} 行")
