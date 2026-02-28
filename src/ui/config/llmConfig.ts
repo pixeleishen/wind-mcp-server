@@ -90,6 +90,15 @@ export interface ServerKeyInfo {
   url: string;
 }
 
+export interface ServerProviderConfig {
+  apiKey: string;   // masked on GET, full on PUT
+  baseUrl: string;
+}
+
+export interface ServerMcpConfig {
+  providers: Record<string, ServerProviderConfig>;
+}
+
 export async function loadServerKeys(): Promise<Record<string, ServerKeyInfo>> {
   try {
     const res = await fetch("/api/llm/keys");
@@ -98,6 +107,24 @@ export async function loadServerKeys(): Promise<Record<string, ServerKeyInfo>> {
   } catch {
     return {};
   }
+}
+
+export async function loadServerConfig(): Promise<ServerMcpConfig> {
+  const res = await fetch("/api/llm/config");
+  const data = await res.json() as { ok: boolean; config: ServerMcpConfig };
+  return data.config;
+}
+
+export async function saveServerConfig(
+  providers: Record<string, Partial<ServerProviderConfig>>,
+): Promise<void> {
+  const res = await fetch("/api/llm/config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ providers }),
+  });
+  const data = await res.json() as { ok: boolean; error?: string };
+  if (!data.ok) throw new Error(data.error ?? "Failed to save config");
 }
 
 export async function callLLM(

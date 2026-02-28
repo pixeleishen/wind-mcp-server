@@ -1,0 +1,22 @@
+{
+  "openai": {
+    "apiKey": "",
+    "baseUrl": "https://api.openai.com/v1"
+  },
+  "anthropic": {
+    "apiKey": "",
+    "baseUrl": "https://api.anthropic.com"
+  },
+  "deepseek": {
+    "apiKey": "",
+    "baseUrl": "https://api.deepseek.com/v1"
+  },
+  "gemini": {
+    "apiKey": "sk-d8W6DPXaZsCYtNMOgaldTyVFNKGqQQWVogG5PZbv3HabAOGT",
+    "baseUrl": "https://once.novai.su/v1"
+  },
+  "ollama": {
+    "apiKey": "",
+    "baseUrl": "http://localhost:11434"
+  }
+}

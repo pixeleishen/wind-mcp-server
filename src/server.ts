@@ -16,13 +16,47 @@ const upload = multer({ dest: path.join(os.tmpdir(), "wind-uploads") });
 
 const KEYS_PATH = path.resolve(import.meta.dirname ?? ".", "../config/llm-keys.json");
 
-function loadKeysFile(): Record<string, string> {
-  try {
-    const raw = fs.readFileSync(KEYS_PATH, "utf-8");
-    return JSON.parse(raw) as Record<string, string>;
-  } catch {
-    return {};
+// ── LLM provider 默认 base URL ────────────────────────────
+const LLM_DEFAULTS: Record<string, string> = {
+  openai:    "https://api.openai.com/v1",
+  anthropic: "https://api.anthropic.com",
+  deepseek:  "https://api.deepseek.com/v1",
+  gemini:    "https://generativelanguage.googleapis.com/v1beta",
+  ollama:    "http://localhost:11434",
+};
+
+interface ProviderConfig {
+  apiKey: string;
+  baseUrl: string;
+}
+
+function loadConfig(): Record<string, ProviderConfig> {
+  const defaults: Record<string, ProviderConfig> = {};
+  for (const [k, v] of Object.entries(LLM_DEFAULTS)) {
+    defaults[k] = { apiKey: "", baseUrl: v };
   }
+  try {
+    const raw = JSON.parse(fs.readFileSync(KEYS_PATH, "utf-8")) as Record<string, unknown>;
+    for (const [k, v] of Object.entries(raw)) {
+      if (typeof v === "string") {
+        // Flat format: { "openai": "sk-..." }
+        if (defaults[k]) defaults[k].apiKey = v;
+      } else if (v && typeof v === "object") {
+        // Structured format: { "openai": { "apiKey": "...", "baseUrl": "..." } }
+        const obj = v as Partial<ProviderConfig>;
+        if (!defaults[k]) defaults[k] = { apiKey: "", baseUrl: LLM_DEFAULTS[k] ?? "" };
+        if (obj.apiKey !== undefined) defaults[k].apiKey = obj.apiKey;
+        if (obj.baseUrl !== undefined) defaults[k].baseUrl = obj.baseUrl;
+      }
+    }
+  } catch { /* file missing or invalid — use defaults */ }
+  return defaults;
+}
+
+function saveConfig(cfg: Record<string, ProviderConfig>): void {
+  const dir = path.dirname(KEYS_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(KEYS_PATH, JSON.stringify(cfg, null, 2), "utf-8");
 }
 
 const app = express();
@@ -81,23 +115,47 @@ app.post("/api/query", upload.single("excelFile"), async (req, res) => {
 const PORT = process.env.PORT ?? 3001;
 app.listen(PORT, () => console.log(`Wind API server running on :${PORT}`));
 
-// ── LLM provider 默认 base URL ────────────────────────────
-const LLM_DEFAULTS: Record<string, string> = {
-  openai:    "https://api.openai.com/v1",
-  anthropic: "https://api.anthropic.com",
-  deepseek:  "https://api.deepseek.com/v1",
-  gemini:    "https://generativelanguage.googleapis.com/v1beta",
-  ollama:    "http://localhost:11434",
-};
 
 // ── GET /api/llm/keys — report which providers have server-side keys ──
 app.get("/api/llm/keys", (_req, res) => {
-  const keys = loadKeysFile();
-  const result: Record<string, boolean> = {};
-  for (const provider of Object.keys(LLM_DEFAULTS)) {
-    result[provider] = !!(keys[provider] && keys[provider].trim());
+  const cfg = loadConfig();
+  const result: Record<string, { hasKey: boolean; url: string }> = {};
+  for (const [name, p] of Object.entries(cfg)) {
+    result[name] = { hasKey: !!(p.apiKey && p.apiKey.trim()), url: p.baseUrl };
   }
   res.json({ keys: result });
+});
+
+// ── GET /api/llm/config — return full config (keys masked) ──
+app.get("/api/llm/config", (_req, res) => {
+  const cfg = loadConfig();
+  const masked: Record<string, ProviderConfig> = {};
+  for (const [name, p] of Object.entries(cfg)) {
+    masked[name] = {
+      apiKey: p.apiKey ? p.apiKey.slice(0, 6) + "***" : "",
+      baseUrl: p.baseUrl,
+    };
+  }
+  res.json({ ok: true, config: { providers: masked } });
+});
+
+// ── PUT /api/llm/config — update config (partial merge) ──
+app.put("/api/llm/config", (req, res) => {
+  const incoming = req.body as { providers?: Record<string, Partial<ProviderConfig>> };
+  if (!incoming.providers) {
+    res.status(400).json({ ok: false, error: "Missing providers" });
+    return;
+  }
+  const cfg = loadConfig();
+  for (const [name, patch] of Object.entries(incoming.providers)) {
+    if (!cfg[name]) {
+      cfg[name] = { apiKey: "", baseUrl: LLM_DEFAULTS[name] ?? "" };
+    }
+    if (patch.apiKey !== undefined) cfg[name].apiKey = patch.apiKey;
+    if (patch.baseUrl !== undefined) cfg[name].baseUrl = patch.baseUrl;
+  }
+  saveConfig(cfg);
+  res.json({ ok: true });
 });
 
 interface LLMRequest {
@@ -144,18 +202,19 @@ app.post("/api/llm/generate", async (req, res) => {
     return;
   }
 
-  // Client key takes priority; fall back to server-side key file
+  // Client key takes priority; fall back to server-side config
+  const cfg = loadConfig();
+  const provCfg = cfg[provider.toLowerCase()];
   let apiKey = clientKey;
   if (!apiKey) {
-    const keys = loadKeysFile();
-    apiKey = keys[provider.toLowerCase()] ?? "";
+    apiKey = provCfg?.apiKey ?? "";
   }
   if (!apiKey && provider.toLowerCase() !== "ollama") {
     res.status(400).json({ ok: false, error: "No API key provided and no server-side key configured" });
     return;
   }
 
-  const base = (baseUrl || LLM_DEFAULTS[provider.toLowerCase()] || "").replace(/\/$/, "");
+  const base = (baseUrl || provCfg?.baseUrl || LLM_DEFAULTS[provider.toLowerCase()] || "").replace(/\/$/, "");
 
   try {
     let text: string;

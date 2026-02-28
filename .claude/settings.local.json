@@ -38,7 +38,8 @@
       "Bash(cd /c/Users/Pixel/Projects/wind-mcp-server && PGPASSWORD=quant123 psql -h localhost -p 5432 -U quant -d quantdb -c \"\\\\dt raw.*; \\\\dt processed.*; \\\\dt factors.*;\" 2>&1)",
       "Bash(\"/c/Program Files/PostgreSQL/16/bin/psql.exe\" --version 2>&1 || \"/c/Program Files/PostgreSQL/15/bin/psql.exe\" --version 2>&1 || \"/c/Program Files/PostgreSQL/14/bin/psql.exe\" --version 2>&1)",
       "Bash(\"/c/Users/Pixel/AppData/Local/Programs/Python/Python313/python.exe\":*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(cat:*)"
     ]
   }
 }

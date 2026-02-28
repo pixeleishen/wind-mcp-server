@@ -130,3 +130,46 @@ CREATE TABLE factors.values (
 - 最大回撤
 - 夏普比率 / 卡玛比率
 - 换手率
+
+---
+
+## 已知差异（Roadmap vs 实际源码）
+
+以下差异通过对源码的交叉核查发现，供后续修复参考。
+
+### 1. Wind API 覆盖数量不一致
+
+| 项目 | Roadmap 声明 | 实际状态 |
+|------|-------------|---------|
+| MCP 工具数量 | 11 个函数全覆盖 | 仅 **6 个**注册为 MCP 工具 |
+| 已注册工具 | WSD/WSS/WSQ/WST/WSET/WSES/WSEE/EDB/TDAYS/TDAYSOFFSET/TDAYSCOUNT | WSD/WSS/WSQ/WSET/EDB/TDAYS |
+| 未注册但有 Python handler | — | WST、WSES、WSEE、TDAYSOFFSET、TDAYSCOUNT |
+
+**根本原因**：`src/index.ts` 的 `tools` 数组仅导入并注册了 6 个工具；WST 等 5 个函数已有 `src/python/handlers/` 实现，但从未在 `src/tools/` 添加 TypeScript 包装，也未注册到 MCP server。
+
+**影响范围**：通过 MCP（Claude 等 LLM 客户端）调用时无法使用这 5 个函数；通过 Express `/api/query` 直接调用仍可正常路由到 Python handler。
+
+### 2. ETL 参数键名不匹配
+
+| 项目 | 说明 |
+|------|------|
+| 问题文件 | `etl/load_prices.py` |
+| 传递参数 | `startDate` / `endDate` |
+| handler 期望参数 | `beginTime` / `endTime`（`src/python/handlers/wsd.py`） |
+| 影响 | ETL 价格入库时 WSD 调用可能因参数键名错误导致数据拉取失败 |
+
+### 3. PYTHON_PATH 硬编码
+
+| 项目 | 说明 |
+|------|------|
+| 问题文件 | `src/server.ts`（第 13 行）、`src/bridge/runner.ts` |
+| 硬编码路径 | `C:\Users\Pixel\AppData\Local\Python\bin\python.exe` |
+| 修复方式 | 在运行环境中设置环境变量 `PYTHON_PATH` |
+
+### 4. BridgeRequest 类型缺少 `"ping"`
+
+| 项目 | 说明 |
+|------|------|
+| 问题文件 | `src/bridge/types.ts` |
+| 问题 | `BridgeRequest["function"]` 联合类型未包含 `"ping"` |
+| 变通方式 | `server.ts` 通过类型转换（`as BridgeRequest["function"]`）绕过，非类型安全 |

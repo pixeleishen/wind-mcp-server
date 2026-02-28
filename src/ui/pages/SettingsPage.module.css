@@ -1,5 +1,5 @@
 .page {
-  max-width: 560px;
+  max-width: 620px;
   margin: 2rem auto;
   padding: 0 1.5rem;
   display: flex;
@@ -145,4 +145,89 @@
   background: #fff5f5;
   color: #c53030;
   border: 1px solid #feb2b2;
+}
+
+/* ── Provider row styles ── */
+
+.providerRow {
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.providerHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.providerName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffb8d0;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.badgeLocal {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.badgeMissing {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #3b1010;
+  color: #fca5a5;
+}
+
+.providerFields {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fieldInline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.fieldInline label {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+}
+
+.fieldInline input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #333;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  background: #1a1a1a;
+  color: #ffb8d0;
+  transition: border-color 0.15s;
+}
+
+.fieldInline input:focus {
+  outline: 2px solid #ff6b8a;
+  outline-offset: 1px;
+  border-color: #ff6b8a;
+}
+
+.save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
