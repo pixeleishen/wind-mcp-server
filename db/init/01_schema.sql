@@ -91,16 +91,26 @@ CREATE TABLE IF NOT EXISTS raw.indicator_series (
 );
 
 -- ============================================================
--- processed schema — 清洗后数据层
+-- processed schema — 标准化特征流（Long Format）
 -- ============================================================
-
-CREATE TABLE IF NOT EXISTS processed.cleaned_series (
-    series_type   TEXT NOT NULL,
-    source_id     INT  NOT NULL,
-    trade_date    DATE NOT NULL,
-    field_name    TEXT NOT NULL,
-    value         DOUBLE PRECISION,
-    PRIMARY KEY (series_type, source_id, trade_date, field_name)
+--
+-- 设计原则（来自 docus/data_process.md）：
+--   · 关注"变化量"而非"绝对量"，transformed_value 存差分/增速/收益率等
+--   · Long Format：同一 target_id 同一天可有多行，由 transform_method 区分
+--   · transform_method 作为联合主键的一部分，无需改表结构即可扩展新特征
+--   · scenario_tag 不入本层，留给沙盒层运行时 JOIN macro_scenarios
+--
+-- target_type: 'asset' | 'indicator'  —— 区分来源表
+-- target_id  : 对应 meta.assets.id 或 meta.indicators.id
+--
+CREATE TABLE IF NOT EXISTS processed.feature_series (
+    obs_date            DATE    NOT NULL,               -- 统一观察日期 YYYY-MM-DD
+    target_type         TEXT    NOT NULL,               -- 'asset' | 'indicator'
+    target_id           INT     NOT NULL,               -- FK → meta.assets.id 或 meta.indicators.id
+    raw_value           DOUBLE PRECISION,               -- 清洗后的原始绝对量（保留备查）
+    transformed_value   DOUBLE PRECISION,               -- 核心特征值：变化量/增速/收益率等
+    transform_method    TEXT    NOT NULL,               -- 'daily_return'|'YoY'|'MoM'|'volatility_20d'|...
+    PRIMARY KEY (obs_date, target_type, target_id, transform_method)
 );
 
 -- ============================================================
@@ -125,8 +135,11 @@ CREATE INDEX IF NOT EXISTS idx_daily_prices_asset
 CREATE INDEX IF NOT EXISTS idx_indicator_series_ind
     ON raw.indicator_series (indicator_id, trade_date DESC);
 
-CREATE INDEX IF NOT EXISTS idx_cleaned_series_lookup
-    ON processed.cleaned_series (series_type, source_id, trade_date DESC);
+CREATE INDEX IF NOT EXISTS idx_feature_series_target
+    ON processed.feature_series (target_type, target_id, obs_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_feature_series_method
+    ON processed.feature_series (transform_method, obs_date DESC);
 
 CREATE INDEX IF NOT EXISTS idx_factors_values_factor
     ON factors.values (factor_name, trade_date DESC);

@@ -22,11 +22,36 @@ DB_DSN = (
     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-# ── LLM 配置 ────────────────────────────────────────────────
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")   # openai | anthropic | deepseek | ollama
-LLM_API_KEY  = os.getenv("LLM_API_KEY",  "")
-LLM_MODEL    = os.getenv("LLM_MODEL",    "gpt-4o")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")         # 留空使用 provider 默认地址
+# ── LLM 配置（从 config/llm-keys.json 实时读取，环境变量可覆盖）─
+import pathlib as _pl, json as _json
+
+_KEYS_FILE = _pl.Path(__file__).parent.parent / "config" / "llm-keys.json"
+
+def load_llm_config(provider: str | None = None) -> dict:
+    """
+    实时读取 llm-keys.json，返回指定 provider 的配置字典。
+    每次调用都重新读文件，修改 json 后无需重启进程。
+    优先级：环境变量 > llm-keys.json
+    返回: {"provider": str, "api_key": str, "base_url": str, "model": str}
+    """
+    try:
+        keys = _json.loads(_KEYS_FILE.read_text(encoding="utf-8")) if _KEYS_FILE.exists() else {}
+    except Exception:
+        keys = {}
+
+    p   = os.getenv("LLM_PROVIDER", provider or "anthropic")
+    cfg = keys.get(p, {})
+    return {
+        "provider": p,
+        "api_key":  os.getenv("LLM_API_KEY",  "") or cfg.get("key",   ""),
+        "base_url": os.getenv("LLM_BASE_URL", "") or cfg.get("url",   ""),
+        "model":    os.getenv("LLM_MODEL",    "") or cfg.get("model", "claude-sonnet-4-6"),
+    }
+
+# 模块级常量仅保留 provider 和 model 供其他模块 import；
+# api_key / base_url 请通过 load_llm_config() 实时获取。
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
+LLM_MODEL    = os.getenv("LLM_MODEL",    "claude-sonnet-4-6")
 
 # ── Wind Python bridge 路径 ─────────────────────────────────
 import pathlib
