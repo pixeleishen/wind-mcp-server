@@ -77,7 +77,11 @@ class LLMClient:
             "Authorization": f"Bearer {self.api_key}",
         }
 
-        url = f"{self.base_url}/chat/completions"
+        url = (
+            self.base_url
+            if self.base_url.endswith("/chat/completions")
+            else f"{self.base_url}/chat/completions"
+        )
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
 
         with urllib.request.urlopen(req, timeout=120) as resp:

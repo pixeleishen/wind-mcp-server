@@ -81,8 +81,7 @@ def call_wind(function: str, params: dict) -> dict:
     bridge_script = BRIDGE_DIR / "wind_bridge.py"
 
     result = subprocess.run(
-        [sys.executable, str(bridge_script)],
-        input=payload,
+        [sys.executable, str(bridge_script), payload],
         capture_output=True,
         text=True,
         encoding="utf-8",
