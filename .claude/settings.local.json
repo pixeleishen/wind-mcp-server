@@ -39,7 +39,13 @@
       "Bash(\"/c/Program Files/PostgreSQL/16/bin/psql.exe\" --version 2>&1 || \"/c/Program Files/PostgreSQL/15/bin/psql.exe\" --version 2>&1 || \"/c/Program Files/PostgreSQL/14/bin/psql.exe\" --version 2>&1)",
       "Bash(\"/c/Users/Pixel/AppData/Local/Programs/Python/Python313/python.exe\":*)",
       "Bash(xargs grep:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(test:*)",
+      "Bash(\"C:/Users/Pixel/AppData/Local/Python/bin/python.exe\":*)"
     ]
   }
 }

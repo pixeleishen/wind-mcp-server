@@ -9,7 +9,7 @@ LLM 客户端：统一封装 OpenAI / Anthropic / DeepSeek / Ollama
 import logging
 from typing import Any
 
-from config import LLM_PROVIDER, LLM_API_KEY, LLM_MODEL, LLM_BASE_URL
+from config import LLM_PROVIDER, LLM_MODEL, load_llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ _DEFAULTS: dict[str, str] = {
     "anthropic": "https://api.anthropic.com",
     "deepseek":  "https://api.deepseek.com/v1",
     "ollama":    "http://localhost:11434",
+    "gemini":    "",   # 由 llm-keys.json 提供代理 URL
 }
 
 
@@ -30,10 +31,12 @@ class LLMClient:
         model: str | None = None,
         base_url: str | None = None,
     ):
-        self.provider = (provider or LLM_PROVIDER).lower()
-        self.api_key  = api_key  or LLM_API_KEY
-        self.model    = model    or LLM_MODEL
-        self.base_url = (base_url or LLM_BASE_URL or _DEFAULTS.get(self.provider, "")).rstrip("/")
+        # 每次实例化都实时读取 llm-keys.json，key 改了无需重启
+        cfg = load_llm_config(provider)
+        self.provider = cfg["provider"].lower()
+        self.api_key  = api_key  or cfg["api_key"]
+        self.model    = model    or cfg["model"]
+        self.base_url = (base_url or cfg["base_url"] or _DEFAULTS.get(self.provider, "")).rstrip("/")
 
         if self.provider not in _DEFAULTS:
             raise ValueError(
@@ -45,10 +48,14 @@ class LLMClient:
     def generate(self, prompt: str, system: str | None = None) -> str:
         """发送 prompt，返回模型回复文本。"""
         logger.info(f"LLM [{self.provider}/{self.model}] 请求中...")
-        if self.provider == "anthropic":
+        # 若配置了自定义 base_url（代理），一律走 OpenAI 兼容接口
+        is_proxy = self.base_url and self.base_url not in (
+            _DEFAULTS.get("anthropic", ""), "https://api.anthropic.com"
+        )
+        if self.provider == "anthropic" and not is_proxy:
             return self._call_anthropic(prompt, system)
         else:
-            # openai / deepseek / ollama 均兼容 OpenAI Chat Completions API
+            # openai / deepseek / ollama / gemini / 代理 anthropic
             return self._call_openai_compat(prompt, system)
 
     # ── OpenAI 兼容接口（OpenAI / DeepSeek / Ollama）──────
@@ -70,7 +77,11 @@ class LLMClient:
             "Authorization": f"Bearer {self.api_key}",
         }
 
-        url = f"{self.base_url}/chat/completions"
+        url = (
+            self.base_url
+            if self.base_url.endswith("/chat/completions")
+            else f"{self.base_url}/chat/completions"
+        )
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
 
         with urllib.request.urlopen(req, timeout=120) as resp:
