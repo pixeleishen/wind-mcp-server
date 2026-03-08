@@ -4,7 +4,6 @@ export type LLMProvider = "openai" | "anthropic" | "deepseek" | "gemini" | "olla
 export interface LLMConfig {
   provider: LLMProvider;
   model: string;
-  baseUrl: string;
 }
 
 const STORAGE_KEY = "llm_config";
@@ -19,6 +18,7 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, string> = {
 
 export const PROVIDER_MODELS: Record<LLMProvider, string[]> = {
   openai: [
+    "auto",
     "o3",
     "o4-mini",
     "gpt-4.1",
@@ -31,23 +31,29 @@ export const PROVIDER_MODELS: Record<LLMProvider, string[]> = {
     "o1-mini",
   ],
   anthropic: [
-    "claude-opus-4-5",
-    "claude-opus-4-0",
-    "claude-sonnet-4-5",
-    "claude-sonnet-4-0",
-    "claude-haiku-3-5",
+    "auto",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6-thinking",
+    "claude-opus-4-5-20251101",
+    "claude-opus-4-5-20251101-thinking",
+    "claude-sonnet-4-5-20250929",
+    "claude-sonnet-4-5-20250929-thinking",
+    "claude-haiku-4-5-20251001",
   ],
   deepseek: [
+    "auto",
     "deepseek-chat",
     "deepseek-reasoner",
   ],
   gemini: [
+    "auto",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
   ],
   ollama: [
+    "auto",
     "qwen2.5-coder:32b",
     "qwen2.5:72b",
     "llama3.3:70b",
@@ -74,11 +80,10 @@ export function loadLLMConfig(): LLMConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Migration: drop apiKey if present from old config
-      return { provider: parsed.provider, model: parsed.model, baseUrl: parsed.baseUrl ?? "" };
+      return { provider: parsed.provider, model: parsed.model };
     }
   } catch { /* ignore */ }
-  return { provider: "openai", model: "o3", baseUrl: "" };
+  return { provider: "openai", model: "o3" };
 }
 
 export function saveLLMConfig(config: LLMConfig): void {
@@ -139,7 +144,7 @@ export async function callLLM(
       provider: config.provider,
       apiKey:   "",
       model:    config.model,
-      baseUrl:  config.baseUrl,
+      baseUrl:  "",
       prompt,
       system,
     }),

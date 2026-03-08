@@ -112,6 +112,135 @@ app.post("/api/query", upload.single("excelFile"), async (req, res) => {
   }
 });
 
+// GET /api/factors/list — list all generated factors
+app.get("/api/factors/list", async (_req, res) => {
+  console.log("[FACTORS] GET /api/factors/list");
+
+  const child = spawn(PYTHON, ["-c", `
+import sys
+sys.path.insert(0, 'etl')
+from base import get_conn, put_conn
+conn = get_conn()
+try:
+    import json
+    with conn.cursor() as cur:
+        cur.execute("SELECT factor_name, description, source_paper, created_at FROM factors.metadata ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        result = [{"name": r[0], "description": r[1], "source": r[2], "created": str(r[3])} for r in rows]
+    print(json.dumps(result))
+finally:
+    put_conn(conn)
+  `.trim()], { stdio: ["ignore", "pipe", "pipe"] });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout!.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr!.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+  child.on("close", (code) => {
+    if (code !== 0) {
+      console.log(`[FACTORS] List factors failed: ${stderr || `exit code ${code}`}`);
+      res.status(500).json({ ok: false, error: stderr || `exit code ${code}` });
+      return;
+    }
+    try {
+      const data = JSON.parse(stdout);
+      console.log(`[FACTORS] Found ${data.length} factors`);
+      res.json({ ok: true, factors: data });
+    } catch {
+      console.log("[FACTORS] Error: Invalid JSON from factors list query");
+      res.status(500).json({ ok: false, error: "Invalid JSON" });
+    }
+  });
+
+  child.on("error", (err) => {
+    console.log(`[FACTORS] List factors error: ${err.message}`);
+    res.status(500).json({ ok: false, error: err.message });
+  });
+});
+
+// GET /api/factors/data — fetch factor values for visualization
+app.get("/api/factors/data", async (req, res) => {
+  const { factorName, startDate, endDate, assetCodes } = req.query as {
+    factorName?: string;
+    startDate?: string;
+    endDate?: string;
+    assetCodes?: string;
+  };
+
+  console.log(`[FACTORS] GET /api/factors/data?factorName=${factorName}&startDate=${startDate}&endDate=${endDate}&assetCodes=${assetCodes}`);
+
+  if (!factorName) {
+    console.log("[FACTORS] Error: Missing factorName");
+    res.status(400).json({ ok: false, error: "Missing factorName" });
+    return;
+  }
+
+  let query = "SELECT * FROM factors.asset_values WHERE factor_name = %s";
+  const params: string[] = [factorName];
+
+  if (startDate) {
+    query += " AND trade_date >= %s";
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += " AND trade_date <= %s";
+    params.push(endDate);
+  }
+  if (assetCodes) {
+    const codes = assetCodes.split(",").map(c => c.trim());
+    query += " AND asset_code = ANY(%s)";
+    params.push(JSON.stringify(codes));
+  }
+
+  query += " ORDER BY trade_date, asset_code";
+
+  const script = `
+import sys
+sys.path.insert(0, 'etl')
+from base import get_conn, put_conn
+import json
+conn = get_conn()
+try:
+    with conn.cursor() as cur:
+        cur.execute(${JSON.stringify(query)}, ${JSON.stringify(params)})
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        result = [dict(zip(cols, [str(v) if v is not None else None for v in row])) for row in rows]
+    print(json.dumps(result))
+finally:
+    put_conn(conn)
+  `.trim();
+
+  const child = spawn(PYTHON, ["-c", script], { stdio: ["ignore", "pipe", "pipe"] });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout!.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr!.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+  child.on("close", (code) => {
+    if (code !== 0) {
+      console.log(`[FACTORS] Factor data query failed: ${stderr || `exit code ${code}`}`);
+      res.status(500).json({ ok: false, error: stderr || `exit code ${code}` });
+      return;
+    }
+    try {
+      const data = JSON.parse(stdout);
+      console.log(`[FACTORS] Retrieved ${data.length} factor data rows`);
+      res.json({ ok: true, data });
+    } catch {
+      console.log("[FACTORS] Error: Invalid JSON from factor data query");
+      res.status(500).json({ ok: false, error: "Invalid JSON" });
+    }
+  });
+
+  child.on("error", (err) => {
+    console.log(`[FACTORS] Factor data query error: ${err.message}`);
+    res.status(500).json({ ok: false, error: err.message });
+  });
+});
+
 const PORT = process.env.PORT ?? 3001;
 app.listen(PORT, () => console.log(`Wind API server running on :${PORT}`));
 
@@ -197,7 +326,10 @@ function jsonPost(url: string, headers: Record<string, string>, body: unknown): 
 app.post("/api/llm/generate", async (req, res) => {
   const { provider, apiKey: clientKey, model, baseUrl, prompt, system } = req.body as LLMRequest;
 
+  console.log(`[LLM] Request: provider=${provider}, model=${model}, promptLen=${prompt?.length || 0}, systemLen=${system?.length || 0}`);
+
   if (!provider || !model || !prompt) {
+    console.log("[LLM] Error: Missing required fields");
     res.status(400).json({ ok: false, error: "Missing required fields: provider, model, prompt" });
     return;
   }
@@ -208,8 +340,12 @@ app.post("/api/llm/generate", async (req, res) => {
   let apiKey = clientKey;
   if (!apiKey) {
     apiKey = provCfg?.apiKey ?? "";
+    console.log(`[LLM] Using server-side key for ${provider}`);
+  } else {
+    console.log(`[LLM] Using client-provided key for ${provider}`);
   }
   if (!apiKey && provider.toLowerCase() !== "ollama") {
+    console.log(`[LLM] Error: No API key for ${provider}`);
     res.status(400).json({ ok: false, error: "No API key provided and no server-side key configured" });
     return;
   }
@@ -220,49 +356,75 @@ app.post("/api/llm/generate", async (req, res) => {
     let text: string;
 
     if (provider.toLowerCase() === "anthropic") {
+      const fullUrl = `${base}/v1/messages`;
+      const useModel = model === "auto" ? undefined : model;
+      console.log(`[LLM] POST ${fullUrl} - model: ${useModel || "(auto)"}, max_tokens: 8192`);
+
       const body: Record<string, unknown> = {
-        model, max_tokens: 8192,
+        max_tokens: 8192,
         messages: [{ role: "user", content: prompt }],
       };
+      if (useModel) body.model = useModel;
       if (system) body.system = system;
 
-      const data = await jsonPost(`${base}/v1/messages`, {
+      const data = await jsonPost(fullUrl, {
         "x-api-key": apiKey, "anthropic-version": "2023-06-01",
       }, body) as Record<string, unknown>;
 
       if (!data.content) {
         const errMsg = (data as { error?: { message?: string } }).error?.message
           ?? JSON.stringify(data);
+        console.log(`[LLM] Anthropic error: ${errMsg}`);
         throw new Error(`Anthropic API error: ${errMsg}`);
       }
       text = ((data.content as { text: string }[])[0]).text;
+      console.log(`[LLM] Anthropic response: ${text.length} chars`);
     } else if (provider.toLowerCase() === "gemini") {
+      const fullUrl = `${base}/openai/chat/completions`;
+      const useModel = model === "auto" ? undefined : model;
+      console.log(`[LLM] POST ${fullUrl} - model: ${useModel || "(auto)"}`);
+
       // Gemini uses OpenAI-compatible endpoint under /openai/
       const messages: { role: string; content: string }[] = [];
       if (system) messages.push({ role: "system", content: system });
       messages.push({ role: "user", content: prompt });
 
-      const data = await jsonPost(`${base}/openai/chat/completions`, {
+      const body: Record<string, unknown> = { messages };
+      if (useModel) body.model = useModel;
+
+      const data = await jsonPost(fullUrl, {
         Authorization: `Bearer ${apiKey}`,
-      }, { model, messages }) as { choices: { message: { content: string } }[] };
+      }, body) as { choices: { message: { content: string } }[] };
 
       text = data.choices[0].message.content;
+      console.log(`[LLM] Gemini response: ${text.length} chars`);
     } else {
+      const useModel = model === "auto" ? undefined : model;
+      console.log(`[LLM] Calling ${provider} API (OpenAI-compatible) - model: ${useModel || "(auto)"}`);
       // OpenAI-compatible: openai / deepseek / ollama
       const messages: { role: string; content: string }[] = [];
       if (system) messages.push({ role: "system", content: system });
       messages.push({ role: "user", content: prompt });
 
+      const body: Record<string, unknown> = { messages };
+      if (useModel) body.model = useModel;
+
       const data = await jsonPost(`${base}/chat/completions`, {
         Authorization: `Bearer ${apiKey}`,
-      }, { model, messages }) as { choices: { message: { content: string } }[] };
+      }, body) as { choices: { message: { content: string } }[] };
 
       text = data.choices[0].message.content;
+      console.log(`[LLM] ${provider} response: ${text.length} chars`);
     }
 
+    console.log(`[LLM] Success`);
     res.json({ ok: true, text });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    console.log(`[LLM] Error: ${message}`);
+    if (err instanceof Error && err.stack) {
+      console.log(`[LLM] Stack: ${err.stack}`);
+    }
     res.status(500).json({ ok: false, error: message });
   }
 });
@@ -363,6 +525,173 @@ app.post("/api/clean/run", (req, res) => {
 
   req.on("close", () => {
     if (activeClean === child) {
+      child.kill();
+      cleanup();
+    }
+  });
+});
+
+// ── Factor production endpoints ──────────────────────────
+
+// POST /api/factors/upload-pdf — extract text from PDF
+app.post("/api/factors/upload-pdf", upload.single("pdf"), async (req, res) => {
+  console.log(`[FACTORS] POST /api/factors/upload-pdf - File: ${req.file?.originalname || 'none'}`);
+
+  if (!req.file) {
+    console.log("[FACTORS] Error: No PDF file uploaded");
+    res.status(400).json({ ok: false, error: "No PDF file uploaded" });
+    return;
+  }
+
+  const pdfPath = req.file.path;
+  console.log(`[FACTORS] Extracting PDF: ${pdfPath}`);
+
+  const child = spawn(PYTHON, ["etl/pdf_extractor.py", "--pdf", pdfPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout!.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr!.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+  child.on("close", (code) => {
+    try { fs.unlinkSync(pdfPath); } catch { /* ignore */ }
+
+    if (code !== 0) {
+      console.log(`[FACTORS] PDF extraction failed: ${stderr || `exit code ${code}`}`);
+      res.status(500).json({ ok: false, error: stderr || `exit code ${code}` });
+      return;
+    }
+    try {
+      const data = JSON.parse(stdout);
+      console.log(`[FACTORS] PDF extracted: ${data.text?.length || 0} chars`);
+      res.json(data);
+    } catch {
+      console.log("[FACTORS] Error: Invalid JSON from pdf_extractor");
+      res.status(500).json({ ok: false, error: "Invalid JSON from pdf_extractor" });
+    }
+  });
+
+  child.on("error", (err) => {
+    try { fs.unlinkSync(pdfPath); } catch { /* ignore */ }
+    console.log(`[FACTORS] PDF extraction error: ${err.message}`);
+    res.status(500).json({ ok: false, error: err.message });
+  });
+});
+
+// GET /api/factors/schema-context — return processed.* schema for LLM
+app.get("/api/factors/schema-context", (_req, res) => {
+  console.log("[FACTORS] GET /api/factors/schema-context");
+
+  const child = spawn(PYTHON, ["etl/schema_inspector.py"], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout!.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr!.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+  child.on("close", (code) => {
+    if (code !== 0) {
+      console.log(`[FACTORS] Schema context failed: ${stderr || `exit code ${code}`}`);
+      res.status(500).json({ ok: false, error: stderr || `exit code ${code}` });
+      return;
+    }
+    try {
+      const data = JSON.parse(stdout);
+      console.log("[FACTORS] Schema context loaded successfully");
+      res.json({ ok: true, data: { processed: data.processed } });
+    } catch {
+      console.log("[FACTORS] Error: Invalid JSON from schema_inspector");
+      res.status(500).json({ ok: false, error: "Invalid JSON from schema_inspector" });
+    }
+  });
+
+  child.on("error", (err) => {
+    console.log(`[FACTORS] Schema context error: ${err.message}`);
+    res.status(500).json({ ok: false, error: err.message });
+  });
+});
+
+// POST /api/factors/run — execute factor generation script (SSE)
+let activeFactor: ChildProcess | null = null;
+
+app.post("/api/factors/run", (req, res) => {
+  console.log("[FACTORS] POST /api/factors/run");
+
+  if (activeFactor) {
+    console.log("[FACTORS] Error: Factor job already running");
+    res.status(409).json({ ok: false, error: "Factor job already running" });
+    return;
+  }
+
+  const { script } = req.body as { script?: string };
+  if (!script) {
+    console.log("[FACTORS] Error: Missing script");
+    res.status(400).json({ ok: false, error: "Missing script" });
+    return;
+  }
+
+  console.log(`[FACTORS] Script length: ${script.length} chars`);
+
+  const tmpFile = path.join(os.tmpdir(), `factor_${Date.now()}.py`);
+  fs.writeFileSync(tmpFile, script, "utf-8");
+  console.log(`[FACTORS] Script written to: ${tmpFile}`);
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  const child = spawn(PYTHON, ["etl/factor_runner.py", "--script", tmpFile], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  activeFactor = child;
+
+  const send = (obj: unknown) => {
+    res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  };
+
+  const onData = (stream: "stdout" | "stderr") => (chunk: Buffer) => {
+    const lines = chunk.toString().split(/\r?\n/).filter(Boolean);
+    for (const line of lines) {
+      send({ type: "log", stream, text: line });
+    }
+  };
+
+  child.stdout!.on("data", onData("stdout"));
+  child.stderr!.on("data", onData("stderr"));
+
+  const cleanup = () => {
+    activeFactor = null;
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+  };
+
+  child.on("close", (code) => {
+    cleanup();
+    if (code === 0) {
+      console.log("[FACTORS] Script execution completed successfully");
+      send({ type: "done", code: 0 });
+    } else {
+      console.log(`[FACTORS] Script execution failed with code ${code ?? 1}`);
+      send({ type: "error", code: code ?? 1 });
+    }
+    res.end();
+  });
+
+  child.on("error", (err) => {
+    cleanup();
+    console.log(`[FACTORS] Script execution error: ${err.message}`);
+    send({ type: "error", code: -1, text: err.message });
+    res.end();
+  });
+
+  req.on("close", () => {
+    if (activeFactor === child) {
+      console.log("[FACTORS] Client disconnected, killing script");
       child.kill();
       cleanup();
     }

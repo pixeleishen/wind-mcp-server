@@ -1,0 +1,293 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+  padding: 1rem 1.5rem;
+}
+
+.uploadSection {
+  display: flex;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0c0d0;
+}
+
+.uploadBtn {
+  padding: 0.5rem 1rem;
+  background: #ff6b8a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.uploadBtn:hover:not(:disabled) {
+  background: #e8527a;
+}
+
+.uploadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clearBtn {
+  padding: 0.5rem 1rem;
+  background: #1a1a1a;
+  color: #ffb8d0;
+  border: 1px solid #f0c0d0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  background: #2a2a2a;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  gap: 1rem;
+  overflow: hidden;
+  padding-top: 1rem;
+}
+
+.chatSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.msgRow {
+  display: flex;
+}
+
+.msgRowUser {
+  justify-content: flex-end;
+}
+
+.msgRowAssistant {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubbleUser {
+  background: #ff6b8a;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.bubbleAssistant {
+  background: #1a1a1a;
+  color: #ffb8d0;
+  border: 1px solid #f0c0d0;
+  border-bottom-left-radius: 4px;
+}
+
+.codeBlock {
+  position: relative;
+  margin-top: 0.5rem;
+}
+
+.codeBlock pre {
+  background: #3d2b3d;
+  color: #d4d4d4;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.runBtn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  background: #ff6b8a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.runBtn:hover:not(:disabled) {
+  background: #e8527a;
+}
+
+.runBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.logArea {
+  background: #3d2b3d;
+  color: #d4d4d4;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 1rem;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0.5rem 0 0 0;
+}
+
+.statusTag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-left: 0.5rem;
+}
+
+.statusRunning {
+  background: #ebf5ff;
+  color: #2b6cb0;
+}
+
+.statusSuccess {
+  background: #f0fff4;
+  color: #276749;
+}
+
+.statusError {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+.inputBar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #f0c0d0;
+}
+
+.inputBar textarea {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #f0c0d0;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  resize: none;
+  min-height: 2.5rem;
+  max-height: 6rem;
+  background: #1a1a1a;
+  color: #ffb8d0;
+}
+
+.inputBar textarea:focus {
+  outline: 2px solid #ff6b8a;
+  outline-offset: 1px;
+  border-color: #ff6b8a;
+}
+
+.sendBtn {
+  padding: 0.5rem 1.2rem;
+  background: #ff6b8a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.sendBtn:hover:not(:disabled) {
+  background: #e8527a;
+}
+
+.sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  color: #ffb8d0;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+
+.factorList {
+  width: 250px;
+  border-left: 1px solid #f0c0d0;
+  padding-left: 1rem;
+  overflow-y: auto;
+}
+
+.factorList h3 {
+  color: #ffb8d0;
+  font-size: 1rem;
+  margin: 0 0 1rem 0;
+}
+
+.factorList ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.factorList li {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #1a1a1a;
+  border: 1px solid #f0c0d0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.factorList li:hover {
+  background: #2a2a2a;
+}
+
+.factorName {
+  color: #ff6b8a;
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.factorDesc {
+  color: #ffb8d0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.emptyState {
+  color: #ffb8d0;
+  opacity: 0.6;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem 0;
+}

@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:server)"
+      "Bash(npm run build:server)",
+      "Bash(psql --version)",
+      "Bash(export PATH=\"/c/Program Files/PostgreSQL/16/bin:$PATH\")",
+      "Bash(pg_isready)"
     ]
-  }
+  },
+  "apiKey": "sk-T0N9wkxAUmo86GbKk8O4zS7KfbrSRLuOK96XKrYaEfCHHW8A",
+  "apiBaseUrl": "https://once.novai.su",
+  "hasCompletedOnboarding": true
 }

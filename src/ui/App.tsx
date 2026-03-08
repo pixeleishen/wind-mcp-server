@@ -15,10 +15,11 @@ import SettingsPage from "./pages/SettingsPage";
 import EtlPage from "./pages/EtlPage";
 import CleanPage from "./pages/CleanPage";
 import AssetsPage from "./pages/AssetsPage";
+import FactorPage from "./pages/FactorPage";
 import styles from "./App.module.css";
 
 type Status = "idle" | "loading" | "success" | "error";
-type Page = "query" | "assets" | "etl" | "clean" | "settings";
+type Page = "query" | "assets" | "etl" | "clean" | "factors" | "settings";
 
 function emptyValues(config: WindFunctionConfig): Record<string, string> {
   return Object.fromEntries(config.fields.map((f) => [f.key, ""]));
@@ -106,6 +107,10 @@ export default function App() {
             onClick={() => setPage("clean")}
           >数据清洗</button>
           <button
+            className={`${styles.navBtn} ${page === "factors" ? styles.navActive : ""}`}
+            onClick={() => setPage("factors")}
+          >因子生产</button>
+          <button
             className={`${styles.navBtn} ${page === "settings" ? styles.navActive : ""}`}
             onClick={() => setPage("settings")}
           >LLM 设置</button>
@@ -118,6 +123,8 @@ export default function App() {
         <EtlPage />
       ) : page === "clean" ? (
         <CleanPage />
+      ) : page === "factors" ? (
+        <FactorPage />
       ) : page === "assets" ? (
         <AssetsPage />
       ) : (

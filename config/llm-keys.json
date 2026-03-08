@@ -5,15 +5,15 @@
   },
   "anthropic": {
     "apiKey": "",
-    "baseUrl": "https://api.anthropic.com"
+    "baseUrl": "https://www.fucheers.top/"
   },
   "deepseek": {
-    "apiKey": "",
+    "apiKey": "123",
     "baseUrl": "https://api.deepseek.com/v1"
   },
   "gemini": {
-    "apiKey": "sk-d8W6DPXaZsCYtNMOgaldTyVFNKGqQQWVogG5PZbv3HabAOGT",
-    "baseUrl": "https://once.novai.su/v1"
+    "apiKey": "",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta"
   },
   "ollama": {
     "apiKey": "",

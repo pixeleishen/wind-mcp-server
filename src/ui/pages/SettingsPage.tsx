@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [serverKeys, setServerKeys] = useState<Record<string, ServerKeyInfo>>({});
+  const [testPrompt, setTestPrompt] = useState("请回复「连接成功」四个字，不要其他内容。");
 
   // Per-provider editable fields
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
@@ -54,7 +55,6 @@ export default function SettingsPage() {
       ...prev,
       provider: p,
       model: defaultModel(p),
-      baseUrl: "",
     }));
   }
 
@@ -92,7 +92,7 @@ export default function SettingsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const reply = await callLLM(config, "请回复「连接成功」四个字，不要其他内容。");
+      const reply = await callLLM(config, testPrompt);
       setTestResult({ ok: true, msg: `连接成功：${reply.trim()}` });
     } catch (e) {
       setTestResult({ ok: false, msg: `${e instanceof Error ? e.message : String(e)}` });
@@ -198,15 +198,26 @@ export default function SettingsPage() {
         </div>
 
         <div className={styles.field}>
-          <label>Base URL 覆盖（可选）</label>
-          <input
-            type="text"
-            value={config.baseUrl}
-            onChange={(e) => set("baseUrl", e.target.value)}
-            placeholder="留空使用服务端配置的 Endpoint"
+          <label>测试提示词</label>
+          <textarea
+            value={testPrompt}
+            onChange={(e) => setTestPrompt(e.target.value)}
+            placeholder="输入测试提示词..."
+            rows={3}
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              border: "1px solid #f0c0d0",
+              borderRadius: "8px",
+              fontSize: "0.92rem",
+              fontFamily: "inherit",
+              resize: "vertical",
+              background: "#1a1a1a",
+              color: "#ffb8d0",
+            }}
           />
           <span className={styles.hint}>
-            仅覆盖本客户端，不影响服务端配置
+            自定义测试提示词，用于验证 LLM 连接
           </span>
         </div>
 
